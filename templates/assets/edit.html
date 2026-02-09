@@ -12,6 +12,9 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('edit_asset', asset_id=asset.id) }}">
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
                         <div class="mb-3">
                             <label for="platform_name" class="form-label">平台名称 *</label>
                             <input type="text" class="form-control" id="platform_name" name="platform_name" required

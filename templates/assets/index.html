@@ -40,6 +40,9 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('assets') }}">
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
                         <div class="mb-3">
                             <label for="platform_name" class="form-label">平台名称 *</label>
                             <input type="text" class="form-control" id="platform_name" name="platform_name" required
@@ -136,6 +139,7 @@
                                             </button>
                                             {% endif %}
                                             <form method="POST" action="{{ url_for('delete_asset', asset_id=asset.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <button type="submit" class="btn btn-outline-danger" title="删除" onclick="return confirm('确定要删除这个资产吗？')">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
