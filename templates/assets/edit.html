@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}编辑资产 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-pencil"></i> 编辑数字资产</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('edit_asset', asset_id=asset.id) }}">
+                        <div class="mb-3">
+                            <label for="platform_name" class="form-label">平台名称 *</label>
+                            <input type="text" class="form-control" id="platform_name" name="platform_name" required
+                                   value="{{ asset.platform_name }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="account" class="form-label">账号 *</label>
+                            <input type="text" class="form-control" id="account" name="account" required
+                                   value="{{ asset.account }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">密码</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" name="password"
+                                       placeholder="留空则不修改密码">
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">留空则不修改现有密码</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="category" class="form-label">分类 *</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="">请选择分类</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat }}" {% if asset.category == cat %}selected{% endif %}>{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">备注说明</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ asset.notes or '' }}</textarea>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('assets') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> 返回
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> 保存修改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.getElementById('togglePassword').addEventListener('click', function() {
+    const passwordInput = document.getElementById('password');
+    const icon = this.querySelector('i');
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

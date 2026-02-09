@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}数字遗嘱 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-file-text"></i> 数字遗嘱</h2>
+            <p class="text-muted">创建和管理您的数字遗产意愿声明</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-download"></i> <strong>下载遗嘱模板：</strong>
+                    提供结构化模板帮助您规划数字遗产处理意愿
+                </div>
+                <div>
+                    <a href="{{ url_for('download_will_template', format='excel') }}" class="btn btn-success btn-sm me-2">
+                        <i class="bi bi-file-earmark-excel"></i> Excel模板
+                    </a>
+                    <a href="{{ url_for('static', filename='templates/数字遗产意愿声明模板.pdf') }}" class="btn btn-danger btn-sm" target="_blank">
+                        <i class="bi bi-file-earmark-pdf"></i> PDF模板
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 创建遗嘱表单 -->
+        <div class="col-lg-5 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="bi bi-file-plus"></i> 创建数字遗嘱</h5>
+                    <span class="badge bg-secondary">结构化表单</span>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('wills') }}" id="willForm">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">遗嘱标题 *</label>
+                            <input type="text" class="form-control" id="title" name="title" required
+                                   placeholder="例如：我的数字遗产处理意愿">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">总体意愿说明 *</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" required
+                                      placeholder="简要说明您对数字遗产的总体处理意愿..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="heir_info" class="form-label">指定继承人信息</label>
+                            <textarea class="form-control" id="heir_info" name="heir_info" rows="2"
+                                      placeholder="填写继承人的姓名、关系、联系方式等信息"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="special_notes" class="form-label">特别说明</label>
+                            <textarea class="form-control" id="special_notes" name="special_notes" rows="2"
+                                      placeholder="其他需要特别说明的事项"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">选择要处理的资产</label>
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>选择</th>
+                                            <th>平台</th>
+                                            <th>账号</th>
+                                            <th>处理方式</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if assets %}
+                                            {% for asset in assets %}
+                                            <tr>
+                                                <td>
+                                                    <input type="checkbox" class="form-check-input asset-checkbox"
+                                                           data-asset-id="{{ asset.id }}"
+                                                           data-platform="{{ asset.platform_name }}"
+                                                           data-account="{{ asset.account }}"
+                                                           onchange="toggleAssetAction(this)">
+                                                </td>
+                                                <td>{{ asset.platform_name }}</td>
+                                                <td>{{ asset.account }}</td>
+                                                <td>
+                                                    <select class="form-select form-select-sm asset-action"
+                                                            data-asset-id="{{ asset.id }}" disabled>
+                                                        <option value="">选择处理方式</option>
+                                                        <option value="指定继承人">指定继承人</option>
+                                                        <option value="转为纪念模式">转为纪念模式</option>
+                                                        <option value="委托删除">委托删除</option>
+                                                        <option value="其他处理方式">其他处理方式</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted">
+                                                    暂无数字资产，请先<a href="{{ url_for('assets') }}">添加资产</a>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="assets_data" id="assets_data" value="{}">
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-file-plus"></i> 创建遗嘱
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 遗嘱列表 -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="bi bi-list-ul"></i> 我的遗嘱列表</h5>
+                    <span class="badge bg-success">{{ wills|length }} 个遗嘱</span>
+                </div>
+                <div class="card-body">
+                    {% if wills %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>标题</th>
+                                    <th>状态</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for will in wills %}
+                                <tr>
+                                    <td>{{ will.title }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if will.status == 'draft' %}secondary{% elif will.status == 'confirmed' %}success{% else %}dark{% endif %}">
+                                            {% if will.status == 'draft' %}草稿{% elif will.status == 'confirmed' %}已确认{% else %}已归档{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>{{ will.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('view_will', will_id=will.id) }}" class="btn btn-outline-primary" title="查看">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('generate_pdf', will_id=will.id) }}" class="btn btn-outline-success" title="下载PDF">
+                                                <i class="bi bi-file-earmark-pdf"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('delete_will', will_id=will.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-danger" title="删除" onclick="return confirm('确定要删除这个遗嘱吗？')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-file-earmark fs-1 text-muted"></i>
+                        <h5 class="text-muted mt-3">暂无数字遗嘱</h5>
+                        <p class="text-muted">创建您的第一个数字遗嘱来规划数字遗产</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 法律提示 -->
+            <div class="alert alert-warning mt-3">
+                <h6><i class="bi bi-exclamation-triangle"></i> 重要法律提示</h6>
+                <p class="mb-0">
+                    本文件可作为您意愿的强烈表达，协助继承人沟通，但不替代正式公证遗嘱。
+                    建议在制定此声明后，咨询专业律师，并考虑进行公证。
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function toggleAssetAction(checkbox) {
+    const assetId = checkbox.getAttribute('data-asset-id');
+    const actionSelect = document.querySelector(`.asset-action[data-asset-id="${assetId}"]`);
+
+    if (checkbox.checked) {
+        actionSelect.disabled = false;
+    } else {
+        actionSelect.disabled = true;
+        actionSelect.value = '';
+    }
+}
+
+document.getElementById('willForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const assetsData = {};
+    const checkedCheckboxes = document.querySelectorAll('.asset-checkbox:checked');
+
+    checkedCheckboxes.forEach(function(checkbox) {
+        const assetId = checkbox.getAttribute('data-asset-id');
+        const platform = checkbox.getAttribute('data-platform');
+        const account = checkbox.getAttribute('data-account');
+        const actionSelect = document.querySelector(`.asset-action[data-asset-id="${assetId}"]`);
+        const action = actionSelect.value;
+
+        assetsData[assetId] = {
+            platform_name: platform,
+            account: account,
+            action: action
+        };
+    });
+
+    document.getElementById('assets_data').value = JSON.stringify(assetsData);
+    this.submit();
+});
+</script>
+{% endblock %}
+{% endblock %}

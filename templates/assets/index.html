@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}数字资产清单 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-wallet2"></i> 数字资产清单</h2>
+            <p class="text-muted">系统管理您的所有数字资产，为继承做好准备</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-download"></i> <strong>下载模板：</strong>
+                    提供结构化模板帮助您整理数字资产信息
+                </div>
+                <div>
+                    <a href="{{ url_for('download_template', format='excel') }}" class="btn btn-success btn-sm me-2">
+                        <i class="bi bi-file-earmark-excel"></i> Excel模板
+                    </a>
+                    <a href="{{ url_for('static', filename='templates/数字资产清单模板.pdf') }}" class="btn btn-danger btn-sm" target="_blank">
+                        <i class="bi bi-file-earmark-pdf"></i> PDF模板
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 添加资产表单 -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="bi bi-plus-circle"></i> 添加数字资产</h5>
+                    <span class="badge bg-secondary">结构化表单</span>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('assets') }}">
+                        <div class="mb-3">
+                            <label for="platform_name" class="form-label">平台名称 *</label>
+                            <input type="text" class="form-control" id="platform_name" name="platform_name" required
+                                   placeholder="例如：微信、QQ、抖音">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="account" class="form-label">账号 *</label>
+                            <input type="text" class="form-control" id="account" name="account" required
+                                   placeholder="例如：手机号、邮箱、用户名">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">密码</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" name="password"
+                                       placeholder="选填，将加密存储">
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">密码将加密存储，确保安全</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="category" class="form-label">分类 *</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="">请选择分类</option>
+                                <option value="社交">社交</option>
+                                <option value="金融">金融</option>
+                                <option value="记忆">记忆</option>
+                                <option value="虚拟财产">虚拟财产</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">备注说明</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="添加任何有用的信息..."></textarea>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> 添加资产
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 资产列表 -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="bi bi-list-ul"></i> 我的资产列表</h5>
+                    <span class="badge bg-primary">{{ assets|length }} 个资产</span>
+                </div>
+                <div class="card-body">
+                    {% if assets %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>平台名称</th>
+                                    <th>账号</th>
+                                    <th>分类</th>
+                                    <th>添加时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for asset in assets %}
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-{% if asset.category == '社交' %}chat-dots{% elif asset.category == '金融' %}bank{% elif asset.category == '记忆' %}images{% else %}coin{% endif %}"></i>
+                                        {{ asset.platform_name }}
+                                    </td>
+                                    <td>{{ asset.account }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if asset.category == '社交' %}primary{% elif asset.category == '金融' %}success{% elif asset.category == '记忆' %}info{% else %}warning{% endif %}">
+                                            {{ asset.category }}
+                                        </span>
+                                    </td>
+                                    <td>{{ asset.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('edit_asset', asset_id=asset.id) }}" class="btn btn-outline-primary" title="编辑">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            {% if asset.encrypted_password %}
+                                            <button type="button" class="btn btn-outline-info decrypt-btn" data-asset-id="{{ asset.id }}" title="查看密码">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            {% endif %}
+                                            <form method="POST" action="{{ url_for('delete_asset', asset_id=asset.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-danger" title="删除" onclick="return confirm('确定要删除这个资产吗？')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <h5 class="text-muted mt-3">暂无数字资产</h5>
+                        <p class="text-muted">开始添加您的第一个数字资产吧</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 创建遗嘱入口 -->
+            {% if assets %}
+            <div class="card mt-3">
+                <div class="card-body bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1"><i class="bi bi-file-text"></i> 基于您的资产创建数字遗嘱</h5>
+                            <p class="text-muted mb-0">您已添加 {{ assets|length }} 个数字资产，现在可以创建遗嘱来指定处理方式</p>
+                        </div>
+                        <a href="{{ url_for('wills') }}" class="btn btn-success btn-lg">
+                            <i class="bi bi-file-plus"></i> 创建数字遗嘱
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 安全提示 -->
+            <div class="alert alert-info mt-3">
+                <h6><i class="bi bi-shield-check"></i> 安全提示</h6>
+                <ul class="mb-0">
+                    <li>所有密码都使用AES-256加密技术存储</li>
+                    <li>建议定期更新密码和备注信息</li>
+                    <li>不要在公共场所查看或编辑敏感信息</li>
+                    <li>建议创建数字遗嘱来指定资产处理方式</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 密码查看模态框 -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">查看密码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="decryptedPassword" class="form-label">密码：</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="decryptedPassword" readonly>
+                        <button class="btn btn-outline-secondary" type="button" id="copyPassword">
+                            <i class="bi bi-clipboard"></i> 复制
+                        </button>
+                    </div>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    请妥善保管此密码，不要在公共场所显示。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// 密码显示/隐藏切换
+document.getElementById('togglePassword').addEventListener('click', function() {
+    const passwordInput = document.getElementById('password');
+    const icon = this.querySelector('i');
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+});
+
+// 解密密码按钮
+document.querySelectorAll('.decrypt-btn').forEach(function(button) {
+    button.addEventListener('click', function() {
+        const assetId = this.getAttribute('data-asset-id');
+
+        fetch(`/assets/${assetId}/decrypt`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('decryptedPassword').value = data.password;
+                const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
+                modal.show();
+            } else {
+                alert('解密失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('解密失败，请重试');
+        });
+    });
+});
+
+// 复制密码
+document.getElementById('copyPassword').addEventListener('click', function() {
+    const passwordInput = document.getElementById('decryptedPassword');
+    passwordInput.select();
+    document.execCommand('copy');
+
+    const originalText = this.innerHTML;
+    this.innerHTML = '<i class="bi bi-check"></i> 已复制';
+    setTimeout(() => {
+        this.innerHTML = originalText;
+    }, 2000);
+});
+</script>
+{% endblock %}
+{% endblock %}

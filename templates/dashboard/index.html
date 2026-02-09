@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}仪表盘 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-speedometer2"></i> 用户仪表盘</h2>
+            <p class="text-muted">欢迎回来，{{ current_user.username }}！这里是您的数字遗产管理中心。</p>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">数字资产</h5>
+                            <h2 class="display-4">{{ assets|length }}</h2>
+                        </div>
+                        <i class="bi bi-wallet2 fs-1"></i>
+                    </div>
+                    <a href="{{ url_for('assets') }}" class="btn btn-light btn-sm mt-2">管理资产</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">数字遗嘱</h5>
+                            <h2 class="display-4">{{ wills|length }}</h2>
+                        </div>
+                        <i class="bi bi-file-text fs-1"></i>
+                    </div>
+                    <a href="{{ url_for('wills') }}" class="btn btn-light btn-sm mt-2">管理遗嘱</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">平台政策</h5>
+                            <h2 class="display-4">3+</h2>
+                        </div>
+                        <i class="bi bi-info-circle fs-1"></i>
+                    </div>
+                    <a href="{{ url_for('policies') }}" class="btn btn-light btn-sm mt-2">查看政策</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">继承指引</h5>
+                            <h2 class="display-4">3</h2>
+                        </div>
+                        <i class="bi bi-diagram-3 fs-1"></i>
+                    </div>
+                    <a href="{{ url_for('inheritance_guide') }}" class="btn btn-light btn-sm mt-2">开始导航</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速操作 -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-lightning-charge"></i> 快速操作</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('assets') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> 添加数字资产
+                        </a>
+                        <a href="{{ url_for('wills') }}" class="btn btn-success">
+                            <i class="bi bi-file-plus"></i> 创建数字遗嘱
+                        </a>
+                        <a href="{{ url_for('inheritance_guide') }}" class="btn btn-info">
+                            <i class="bi bi-compass"></i> 查看继承导航
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-bell"></i> 提醒事项</h5>
+                </div>
+                <div class="card-body">
+                    {% if assets|length == 0 %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 您还没有添加任何数字资产，建议现在开始规划。
+                    </div>
+                    {% endif %}
+
+                    {% if wills|length == 0 %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 创建数字遗嘱可以更好地保护您的数字遗产。
+                    </div>
+                    {% endif %}
+
+                    {% if assets|length > 0 and wills|length > 0 %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> 您已经开始了数字遗产规划，建议定期更新信息。
+                    </div>
+                    {% endif %}
+
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-shield-check"></i> 所有敏感数据均已加密存储，确保信息安全。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近活动 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-clock-history"></i> 最近添加的资产</h5>
+                </div>
+                <div class="card-body">
+                    {% if assets %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>平台名称</th>
+                                    <th>账号</th>
+                                    <th>分类</th>
+                                    <th>添加时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for asset in assets[:5] %}
+                                <tr>
+                                    <td>{{ asset.platform_name }}</td>
+                                    <td>{{ asset.account }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if asset.category == '社交' %}primary{% elif asset.category == '金融' %}success{% elif asset.category == '记忆' %}info{% else %}warning{% endif %}">
+                                            {{ asset.category }}
+                                        </span>
+                                    </td>
+                                    <td>{{ asset.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('edit_asset', asset_id=asset.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{{ url_for('delete_asset', asset_id=asset.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除这个资产吗？')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">暂无数字资产</p>
+                        <a href="{{ url_for('assets') }}" class="btn btn-primary">添加第一个资产</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

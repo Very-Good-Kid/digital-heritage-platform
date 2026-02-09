@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}常见问题 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-question-circle"></i> 常见问题解答</h2>
+            <p class="text-muted">关于数字遗产和继承的常见疑问解答</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h6>问题分类</h6>
+                </div>
+                <div class="card-body">
+                    <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist">
+                        {% for category in categories %}
+                        <button class="nav-link {% if loop.first %}active{% endif %}"
+                                id="v-pills-{{ loop.index }}-tab"
+                                data-bs-toggle="pill"
+                                data-bs-target="#v-pills-{{ loop.index }}"
+                                type="button"
+                                role="tab">
+                            {{ category }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="tab-content" id="v-pills-tabContent">
+                {% set current_category = '' %}
+                {% set category_index = 0 %}
+                {% for faq in faqs %}
+                    {% if faq.category != current_category %}
+                        {% if current_category != '' %}
+            </div>
+                        {% endif %}
+                        {% set current_category = faq.category %}
+                        {% set category_index = category_index + 1 %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+                 id="v-pills-{{ category_index }}"
+                 role="tabpanel">
+            <div class="accordion" id="accordion{{ category_index }}">
+                    {% endif %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ faq.id }}">
+                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapse{{ faq.id }}">
+                            {{ faq.question }}
+                        </button>
+                    </h2>
+                    <div id="collapse{{ faq.id }}"
+                         class="accordion-collapse collapse {% if loop.first and category_index == 1 %}show{% endif %}"
+                         data-bs-parent="#accordion{{ category_index }}">
+                        <div class="accordion-body">
+                            {{ faq.answer }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 联系我们 -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h5><i class="bi bi-chat-dots"></i> 没有找到您的问题？</h5>
+                <p class="text-muted">如果您有其他疑问，欢迎联系我们</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="mailto:contact@digitalheritage.com" class="btn btn-primary">
+                        <i class="bi bi-envelope"></i> 发送邮件
+                    </a>
+                    <a href="tel:400-888-8888" class="btn btn-success">
+                        <i class="bi bi-telephone"></i> 电话咨询
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

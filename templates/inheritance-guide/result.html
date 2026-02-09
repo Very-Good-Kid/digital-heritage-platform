@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}继承导航结果 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('inheritance_guide') }}">继承导航</a></li>
+                    <li class="breadcrumb-item active">导航结果</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-compass"></i> {{ platform }}继承路径图</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>目标平台</h6>
+                            <p><strong>{{ platform }}</strong></p>
+                            <p class="text-muted">{{ policy.policy_content }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>继承情景</h6>
+                            <p>
+                                <strong>
+                                    {% if scenario == 'scenario1' %}有遗嘱+有密码
+                                    {% elif scenario == 'scenario2' %}有遗嘱+无密码
+                                    {% else %}无遗嘱+无密码
+                                    {% endif %}
+                                </strong>
+                            </p>
+                            <p class="text-muted">
+                                继承可能性：
+                                <span class="badge bg-{% if policy.inherit_possibility == '低' %}danger{% elif policy.inherit_possibility == '中' %}warning{% else %}success{% endif %}">
+                                    {{ policy.inherit_possibility }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-list-ol"></i> 详细操作步骤</h5>
+                </div>
+                <div class="card-body">
+                    {% for step in steps %}
+                    <div class="step-item">
+                        <div class="step-number">{{ step.step }}</div>
+                        <div class="step-content">
+                            <div class="step-title">{{ step.title }}</div>
+                            <p>{{ step.description }}</p>
+
+                            {% if step.materials %}
+                            <h6 class="mt-3">材料准备清单</h6>
+                            <ul class="material-list">
+                                {% for material in step.materials %}
+                                <li>{{ material }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-telephone"></i> 官方联系渠道</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><i class="bi bi-telephone-fill"></i> 客服电话：<strong>{{ policy.customer_service }}</strong></p>
+                            <p class="text-muted small">建议在工作时间拨打，准备好相关材料和信息</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-exclamation-triangle"></i> 重要提醒</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-danger small">{{ policy.risk_warning }}</p>
+                            <p class="text-muted small">继承过程可能需要较长时间，请保持耐心并准备好所有必要材料</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6><i class="bi bi-gavel"></i> 法律依据</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ policy.legal_basis }}</p>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ url_for('inheritance_guide') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回重新选择
+                </a>
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="bi bi-printer"></i> 打印/保存此页面
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

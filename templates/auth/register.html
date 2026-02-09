@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h4><i class="bi bi-person-plus"></i> 用户注册</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('register') }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">用户名</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="username" name="username" required autofocus>
+                            </div>
+                            <div class="form-text">用户名长度为3-20个字符</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">邮箱地址</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">密码</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="form-text">密码至少6个字符</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">确认密码</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="agree" required>
+                            <label class="form-check-label" for="agree">
+                                我已阅读并同意<a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">用户协议</a>和<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">隐私政策</a>
+                            </label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-person-plus"></i> 注册
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="mt-3 text-center">
+                        <p class="mb-0">
+                            已有账号？<a href="{{ url_for('login') }}">立即登录</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户协议模态框 -->
+<div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">用户协议</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>1. 服务说明</h6>
+                <p>本平台为用户提供数字遗产规划和继承信息服务，帮助用户管理数字资产。</p>
+
+                <h6>2. 用户责任</h6>
+                <p>用户应妥善保管账户信息，对使用本服务产生的后果承担责任。</p>
+
+                <h6>3. 数据安全</h6>
+                <p>平台采用加密技术保护用户数据，但用户仍需自行备份重要信息。</p>
+
+                <h6>4. 法律免责</h6>
+                <p>本平台提供的信息仅供参考，不构成法律建议。数字遗产的继承需遵循相关法律法规。</p>
+
+                <h6>5. 服务变更</h6>
+                <p>平台保留修改服务条款的权利，修改后将通过适当方式通知用户。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 隐私政策模态框 -->
+<div class="modal fade" id="privacyModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">隐私政策</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>1. 信息收集</h6>
+                <p>我们收集用户注册信息、数字资产清单等必要信息以提供服务。</p>
+
+                <h6>2. 信息使用</h6>
+                <p>收集的信息仅用于提供和改进服务，不会用于其他商业目的。</p>
+
+                <h6>3. 信息保护</h6>
+                <p>我们采用行业标准的安全措施保护用户信息，包括数据加密、访问控制等。</p>
+
+                <h6>4. 信息共享</h6>
+                <p>未经用户同意，我们不会向第三方共享用户信息，法律另有规定的除外。</p>
+
+                <h6>5. 用户权利</h6>
+                <p>用户可以查看、修改、删除个人信息，注销账户。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

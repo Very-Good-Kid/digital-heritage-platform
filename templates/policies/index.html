@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}平台政策矩阵 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-info-circle"></i> 平台政策矩阵</h2>
+            <p class="text-muted">了解各大数字平台关于数字资产继承的政策规定</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-table"></i> 主流平台继承政策对比</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>平台名称</th>
+                                    <th>政策内容</th>
+                                    <th>平台态度</th>
+                                    <th>继承可能性</th>
+                                    <th>客服联系方式</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for policy in policies %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ policy.platform_name }}</strong>
+                                    </td>
+                                    <td>{{ policy.policy_content }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if policy.attitude == '明确禁止' %}danger{% elif policy.attitude == '态度模糊' %}warning{% elif policy.attitude == '有限支持' %}info{% else %}success{% endif %}">
+                                            {{ policy.attitude }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if policy.inherit_possibility == '低' %}danger{% elif policy.inherit_possibility == '中' %}warning{% else %}success{% endif %}">
+                                            {{ policy.inherit_possibility }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-telephone"></i> {{ policy.customer_service }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-file-text"></i> 详细政策信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="policyAccordion">
+                        {% for policy in policies %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ policy.id }}">
+                                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapse{{ policy.id }}">
+                                    <strong>{{ policy.platform_name }}</strong>
+                                    <span class="ms-3">
+                                        <span class="badge bg-{% if policy.attitude == '明确禁止' %}danger{% elif policy.attitude == '态度模糊' %}warning{% elif policy.attitude == '有限支持' %}info{% else %}success{% endif %}">
+                                            {{ policy.attitude }}
+                                        </span>
+                                        <span class="badge bg-{% if policy.inherit_possibility == '低' %}danger{% elif policy.inherit_possibility == '中' %}warning{% else %}success{% endif %}">
+                                            继承可能性：{{ policy.inherit_possibility }}
+                                        </span>
+                                    </span>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ policy.id }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                                 data-bs-parent="#policyAccordion">
+                                <div class="accordion-body">
+                                    <h6>政策内容</h6>
+                                    <p>{{ policy.policy_content }}</p>
+
+                                    <h6>法律依据</h6>
+                                    <p class="text-muted">{{ policy.legal_basis }}</p>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>客服联系方式</h6>
+                                            <p>
+                                                <i class="bi bi-telephone"></i> {{ policy.customer_service }}
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>风险提示</h6>
+                                            <p class="text-danger">{{ policy.risk_warning }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <a href="{{ url_for('inheritance_guide') }}" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-compass"></i> 查看{{ policy.platform_name }}继承导航
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 政策说明 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h6><i class="bi bi-info-circle"></i> 政策说明</h6>
+                <ul class="mb-0">
+                    <li><strong>明确禁止：</strong>平台明确表示不支持账户继承，账户将永久冻结或删除。</li>
+                    <li><strong>态度模糊：</strong>平台政策不明确，需要具体情况具体分析。</li>
+                    <li><strong>有限支持：</strong>平台在特定条件下支持账户继承，需要提供完整法律文件。</li>
+                    <li><strong>主动服务：</strong>平台提供账户继承的专门服务和流程。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

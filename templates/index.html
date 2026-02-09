@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container text-center">
+        <h1>守护您的数字记忆，传承珍贵遗产</h1>
+        <p class="lead">一站式数字遗产规划与继承服务平台，为您的社交账号、虚拟财产提供生前规划与身后继承的完整解决方案</p>
+        <div class="mt-4">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg me-2">
+                    <i class="bi bi-speedometer2"></i> 进入仪表盘
+                </a>
+            {% else %}
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-2">
+                    <i class="bi bi-person-plus"></i> 立即注册
+                </a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                    <i class="bi bi-box-arrow-in-right"></i> 登录
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- 核心功能介绍 -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-6 fw-bold">核心功能</h2>
+            <p class="text-muted">为您提供全方位的数字遗产管理服务</p>
+        </div>
+
+        <div class="row g-4">
+            <!-- 生前规划 -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-clipboard-data"></i>
+                        </div>
+                        <h4>生前规划</h4>
+                        <p class="text-muted">系统盘点您的数字资产，生成结构化的数字遗产清单和数字遗嘱</p>
+                        <ul class="text-start list-unstyled">
+                            <li><i class="bi bi-check-circle text-success"></i> 数字资产清单生成</li>
+                            <li><i class="bi bi-check-circle text-success"></i> 数字遗嘱创建</li>
+                            <li><i class="bi bi-check-circle text-success"></i> 数据加密存储</li>
+                        </ul>
+                        <a href="{{ url_for('assets') }}" class="btn btn-primary">
+                            <i class="bi bi-arrow-right"></i> 开始规划
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 身后继承 -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-diagram-3"></i>
+                        </div>
+                        <h4>身后继承</h4>
+                        <p class="text-muted">提供清晰的继承指引和平台政策信息，帮助继承人顺利完成数字资产继承</p>
+                        <ul class="text-start list-unstyled">
+                            <li><i class="bi bi-check-circle text-success"></i> 平台政策矩阵</li>
+                            <li><i class="bi bi-check-circle text-success"></i> 继承导航指引</li>
+                            <li><i class="bi bi-check-circle text-success"></i> 情景化流程图</li>
+                        </ul>
+                        <a href="{{ url_for('inheritance_guide') }}" class="btn btn-primary">
+                            <i class="bi bi-arrow-right"></i> 查看指引
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 情感支持 -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-heart"></i>
+                        </div>
+                        <h4>情感支持</h4>
+                        <p class="text-muted">分享故事，获取支持，在数字遗产管理过程中不再孤单</p>
+                        <ul class="text-start list-unstyled">
+                            <li><i class="bi bi-check-circle text-success"></i> 数字记忆故事墙</li>
+                            <li><i class="bi bi-check-circle text-success"></i> 普法问答社区</li>
+                            <li><i class="bi bi-check-circle text-success"></i> 专业咨询支持</li>
+                        </ul>
+                        <a href="{{ url_for('stories') }}" class="btn btn-primary">
+                            <i class="bi bi-arrow-right"></i> 浏览故事
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 数据统计 -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="display-4 fw-bold text-primary">3+</h3>
+                        <p class="text-muted mb-0">主流平台支持</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="display-4 fw-bold text-success">100%</h3>
+                        <p class="text-muted mb-0">数据加密存储</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="display-4 fw-bold text-warning">24/7</h3>
+                        <p class="text-muted mb-0">平台可访问</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="display-4 fw-bold text-danger">0</h3>
+                        <p class="text-muted mb-0">数据泄露记录</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 平台支持 -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-6 fw-bold">支持的主流平台</h2>
+            <p class="text-muted">我们持续更新各大平台的数字资产继承政策</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-4 mb-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-chat-dots fs-1 text-success mb-3"></i>
+                        <h4>微信</h4>
+                        <p class="text-muted">了解微信账户继承相关政策</p>
+                        <a href="{{ url_for('policies') }}" class="btn btn-outline-primary btn-sm">查看政策</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-chat-square-dots fs-1 text-primary mb-3"></i>
+                        <h4>QQ</h4>
+                        <p class="text-muted">了解QQ号码继承相关政策</p>
+                        <a href="{{ url_for('policies') }}" class="btn btn-outline-primary btn-sm">查看政策</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-camera-video fs-1 text-danger mb-3"></i>
+                        <h4>抖音</h4>
+                        <p class="text-muted">了解抖音账号继承相关政策</p>
+                        <a href="{{ url_for('policies') }}" class="btn btn-outline-primary btn-sm">查看政策</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 行动号召 -->
+<section class="py-5 bg-primary text-white">
+    <div class="container text-center">
+        <h2 class="mb-4">立即开始您的数字遗产规划之旅</h2>
+        <p class="lead mb-4">不要等到为时已晚，现在就开始保护您的数字记忆和财产</p>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('assets') }}" class="btn btn-light btn-lg">
+                <i class="bi bi-plus-circle"></i> 添加我的第一个数字资产
+            </a>
+        {% else %}
+            <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-2">
+                <i class="bi bi-person-plus"></i> 免费注册
+            </a>
+            <a href="{{ url_for('about') }}" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-info-circle"></i> 了解更多
+            </a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

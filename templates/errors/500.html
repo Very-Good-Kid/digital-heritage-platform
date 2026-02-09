@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}服务器错误 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card">
+                <div class="card-body py-5">
+                    <h1 class="display-1 text-danger">500</h1>
+                    <h3 class="mb-4">服务器错误</h3>
+                    <p class="text-muted mb-4">抱歉，服务器出现了问题，请稍后再试。</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="bi bi-house"></i> 返回首页
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
