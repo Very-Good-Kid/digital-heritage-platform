@@ -12,23 +12,35 @@ from datetime import datetime
 # 注册中文字体
 def register_chinese_fonts():
     """注册中文字体"""
-    try:
-        # 尝试注册系统中的中文字体
-        # Windows
-        if os.path.exists('C:\\Windows\\Fonts\\msyh.ttc'):
-            pdfmetrics.registerFont(TTFont('SimHei', 'C:\\Windows\\Fonts\\msyh.ttc', subfontIndex=0))
-            pdfmetrics.registerFont(TTFont('SimHei-Bold', 'C:\\Windows\\Fonts\\msyhbd.ttc', subfontIndex=0))
-            return True
-        # Linux
-        elif os.path.exists('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc'):
-            pdfmetrics.registerFont(TTFont('SimHei', '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', subfontIndex=0))
-            return True
-        # Mac
-        elif os.path.exists('/System/Library/Fonts/PingFang.ttc'):
-            pdfmetrics.registerFont(TTFont('SimHei', '/System/Library/Fonts/PingFang.ttc', subfontIndex=1))
-            return True
-    except:
-        pass
+    font_paths = [
+        # Windows 字体
+        ('C:\\Windows\\Fonts\\msyh.ttc', 0, 'msyhbd.ttc', 0),
+        ('C:\\Windows\\Fonts\\simhei.ttf', 0, None, 0),
+        ('C:\\Windows\\Fonts\\simsun.ttc', 0, None, 0),
+        # Linux 字体
+        ('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', 0, None, 0),
+        ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 0, None, 0),
+        ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 0, None, 0),
+        # Mac 字体
+        ('/System/Library/Fonts/PingFang.ttc', 1, None, 0),
+        ('/System/Library/Fonts/STHeiti Light.ttc', 0, None, 0),
+    ]
+
+    for font_path, subfont_index, bold_path, bold_subfont in font_paths:
+        try:
+            if os.path.exists(font_path):
+                pdfmetrics.registerFont(TTFont('SimHei', font_path, subfontIndex=subfont_index))
+                if bold_path and os.path.exists(bold_path):
+                    pdfmetrics.registerFont(TTFont('SimHei-Bold', bold_path, subfontIndex=bold_subfont))
+                else:
+                    pdfmetrics.registerFont(TTFont('SimHei-Bold', font_path, subfontIndex=subfont_index))
+                print(f"Successfully registered Chinese font: {font_path}")
+                return True
+        except Exception as e:
+            print(f"Failed to register font {font_path}: {e}")
+            continue
+
+    print("Warning: No Chinese font found, PDF may display garbled text")
     return False
 
 # 注册字体

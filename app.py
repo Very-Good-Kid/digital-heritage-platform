@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
@@ -11,6 +12,9 @@ from config import config
 # 初始化Flask应用
 app = Flask(__name__)
 app.config.from_object(config['default'])
+
+# 初始化CSRF保护
+csrf = CSRFProtect(app)
 
 # 初始化扩展
 db.init_app(app)
@@ -1029,11 +1033,33 @@ def about():
 @app.before_request
 def initialize_database():
     """初始化数据库"""
+    # 只在第一次请求时初始化
     if not hasattr(initialize_database, 'initialized'):
-        with app.app_context():
-            db.create_all()
-            initialize_sample_data()
-        initialize_database.initialized = True
+        try:
+            with app.app_context():
+                # 确保数据目录存在
+                db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+                db_dir = os.path.dirname(db_path)
+
+                if db_dir and not os.path.exists(db_dir):
+                    os.makedirs(db_dir, exist_ok=True)
+                    print(f"Created database directory: {db_dir}")
+
+                # 创建所有表
+                db.create_all()
+                print("Database tables created successfully")
+
+                # 初始化示例数据
+                initialize_sample_data()
+                print("Sample data initialized successfully")
+
+            initialize_database.initialized = True
+        except Exception as e:
+            print(f"Database initialization error: {e}")
+            import traceback
+            traceback.print_exc()
+            # 即使初始化失败，也标记为已初始化，避免重复尝试
+            initialize_database.initialized = True
 
 def initialize_sample_data():
     """初始化示例数据"""
@@ -1076,6 +1102,13 @@ def initialize_sample_data():
         db.session.add(policy)
 
     # 添加FAQ
+    # ============================================================
+    # 如何添加新的FAQ：
+    # 1. 在下面的列表中添加新的 FAQ() 对象
+    # 2. 填写 question（问题）、answer（答案）、category（分类）、order（排序）
+    # 3. category 可以是：'基础概念'、'保护措施'、'法律问题' 或新增分类
+    # 4. order 用于同一分类内的排序，数字越小越靠前
+    # ============================================================
     faqs = [
         FAQ(
             question='数字遗产包括哪些内容？',
@@ -1084,8 +1117,20 @@ def initialize_sample_data():
             order=1
         ),
         FAQ(
+            question='什么是数字遗嘱？',
+            answer='数字遗嘱是指用户在生前制定的关于其数字资产如何处理的书面文件，包括账户信息、密码、处理方式等内容的详细说明。',
+            category='基础概念',
+            order=2
+        ),
+        FAQ(
             question='如何保护我的数字遗产？',
             answer='1. 定期备份重要数据；2. 使用密码管理器；3. 创建数字遗嘱；4. 告知家人重要账户信息；5. 了解各平台的继承政策。',
+            category='保护措施',
+            order=1
+        ),
+        FAQ(
+            question='密码安全应该注意什么？',
+            answer='1. 使用强密码（大小写字母、数字、特殊符号组合）；2. 不要重复使用密码；3. 定期更换密码；4. 启用两步验证；5. 使用密码管理器。',
             category='保护措施',
             order=2
         ),
@@ -1093,7 +1138,13 @@ def initialize_sample_data():
             question='数字遗嘱有法律效力吗？',
             answer='数字遗嘱在我国法律体系中尚未明确认定，但可以作为表达意愿的重要依据。建议配合传统遗嘱使用，并咨询专业律师。',
             category='法律问题',
-            order=3
+            order=1
+        ),
+        FAQ(
+            question='继承人的法律权利是什么？',
+            answer='根据《民法典》，继承人有权继承被继承人的合法财产。但对于数字财产，法律界定尚不明确，需要参考平台政策和相关司法解释。',
+            category='法律问题',
+            order=2
         )
     ]
 

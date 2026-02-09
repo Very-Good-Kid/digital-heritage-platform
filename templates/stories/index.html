@@ -14,18 +14,18 @@
     <!-- 故事分类 -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-outline-primary active">全部</button>
-                <button type="button" class="btn btn-outline-primary">情感故事</button>
-                <button type="button" class="btn btn-outline-primary">哲思文章</button>
-                <button type="button" class="btn btn-outline-primary">媒体报道</button>
+            <div class="btn-group" role="group" id="storyFilters">
+                <button type="button" class="btn btn-outline-primary active" data-filter="all">全部</button>
+                <button type="button" class="btn btn-outline-primary" data-filter="情感故事">情感故事</button>
+                <button type="button" class="btn btn-outline-primary" data-filter="哲思文章">哲思文章</button>
+                <button type="button" class="btn btn-outline-primary" data-filter="媒体报道">媒体报道</button>
             </div>
         </div>
     </div>
 
-    <div class="row">
+    <div class="row" id="storiesContainer">
         {% for story in stories %}
-        <div class="col-md-6 mb-4">
+        <div class="col-md-6 mb-4 story-card" data-category="{{ story.category }}">
             <div class="card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-3">
@@ -45,9 +45,9 @@
                         <small class="text-muted">
                             <i class="bi bi-person"></i> {{ story.author }}
                         </small>
-                        <a href="#" class="btn btn-sm btn-outline-primary">
+                        <button class="btn btn-sm btn-outline-primary" onclick="showStoryDetail({{ story.id }})">
                             阅读更多 <i class="bi bi-arrow-right"></i>
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -80,15 +80,15 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form>
+                <form id="shareStoryForm">
                     <div class="mb-3">
                         <label for="storyTitle" class="form-label">故事标题</label>
-                        <input type="text" class="form-control" id="storyTitle" placeholder="给您的故事起个标题">
+                        <input type="text" class="form-control" id="storyTitle" name="title" placeholder="给您的故事起个标题" required>
                     </div>
 
                     <div class="mb-3">
                         <label for="storyCategory" class="form-label">故事分类</label>
-                        <select class="form-select" id="storyCategory">
+                        <select class="form-select" id="storyCategory" name="category" required>
                             <option value="情感故事">情感故事</option>
                             <option value="哲思文章">哲思文章</option>
                             <option value="媒体报道">媒体报道</option>
@@ -97,21 +97,127 @@
 
                     <div class="mb-3">
                         <label for="storyContent" class="form-label">故事内容</label>
-                        <textarea class="form-control" id="storyContent" rows="6"
-                                  placeholder="分享您的数字遗产故事..."></textarea>
+                        <textarea class="form-control" id="storyContent" name="content" rows="6"
+                                  placeholder="分享您的数字遗产故事..." required></textarea>
                     </div>
 
                     <div class="mb-3">
                         <label for="storyAuthor" class="form-label">作者名称</label>
-                        <input type="text" class="form-control" id="storyAuthor" placeholder="您的名称或昵称">
+                        <input type="text" class="form-control" id="storyAuthor" name="author" placeholder="您的名称或昵称" required>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary">提交故事</button>
+                <button type="button" class="btn btn-primary" onclick="submitStory()">提交故事</button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- 故事详情模态框 -->
+<div class="modal fade" id="storyDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="storyDetailTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="storyDetailContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 故事分类过滤
+document.querySelectorAll('#storyFilters button').forEach(button => {
+    button.addEventListener('click', function() {
+        // 移除所有按钮的 active 类
+        document.querySelectorAll('#storyFilters button').forEach(btn => btn.classList.remove('active'));
+        // 添加当前按钮的 active 类
+        this.classList.add('active');
+
+        const filter = this.getAttribute('data-filter');
+        const cards = document.querySelectorAll('.story-card');
+
+        cards.forEach(card => {
+            const category = card.getAttribute('data-category');
+            if (filter === 'all' || category === filter) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+});
+
+// 显示故事详情
+function showStoryDetail(storyId) {
+    // 获取故事数据
+    const stories = [
+        {% for story in stories %}
+        {
+            id: {{ story.id }},
+            title: "{{ story.title }}",
+            content: "{{ story.content }}",
+            author: "{{ story.author }}",
+            category: "{{ story.category }}",
+            created_at: "{{ story.created_at.strftime('%Y-%m-%d') }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const story = stories.find(s => s.id === storyId);
+    if (story) {
+        document.getElementById('storyDetailTitle').textContent = story.title;
+        document.getElementById('storyDetailContent').innerHTML = `
+            <div class="mb-3">
+                <span class="badge bg-${story.category === '情感故事' ? 'primary' : story.category === '哲思文章' ? 'success' : 'info'}">
+                    ${story.category}
+                </span>
+                <small class="text-muted ms-2">
+                    <i class="bi bi-calendar"></i> ${story.created_at}
+                </small>
+                <small class="text-muted ms-2">
+                    <i class="bi bi-person"></i> ${story.author}
+                </small>
+            </div>
+            <div class="story-content" style="line-height: 1.8;">
+                ${story.content.replace(/\n/g, '<br>')}
+            </div>
+        `;
+        const modal = new bootstrap.Modal(document.getElementById('storyDetailModal'));
+        modal.show();
+    }
+}
+
+// 提交故事
+function submitStory() {
+    const form = document.getElementById('shareStoryForm');
+    const title = document.getElementById('storyTitle').value;
+    const category = document.getElementById('storyCategory').value;
+    const content = document.getElementById('storyContent').value;
+    const author = document.getElementById('storyAuthor').value;
+
+    if (!title || !content || !author) {
+        alert('请填写所有必填字段');
+        return;
+    }
+
+    // 显示提交成功提示
+    alert('故事提交成功！感谢您的分享。\n\n注意：当前为演示版本，故事将在审核后显示。');
+
+    // 关闭模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('shareStoryModal'));
+    modal.hide();
+
+    // 清空表单
+    form.reset();
+}
+</script>
 {% endblock %}
