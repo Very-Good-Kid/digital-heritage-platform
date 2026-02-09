@@ -5,8 +5,6 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.10.0
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
@@ -17,3 +15,5 @@ services:
       name: data
       mountPath: /opt/render/project/data
       sizeGB: 1
+    # Python 版本配置
+    pythonVersion: "3.10"
