@@ -1,12 +1,27 @@
+# 核心框架
 Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 Flask-WTF==1.2.1
 Werkzeug==3.0.1
-cryptography==41.0.7
-reportlab==4.0.7
-Pillow==10.1.0
-python-dotenv==1.0.0
-email-validator==2.1.0
-WTForms==3.1.1
-gunicorn==21.2.0
+
+# 加密和安全
+cryptography>=41.0.0
+
+# PDF生成
+reportlab>=4.0.0
+
+# 图像处理
+Pillow>=10.0.0
+
+# 工具库
+python-dotenv>=1.0.0
+email-validator>=2.0.0
+WTForms>=3.0.0
+
+# WSGI服务器
+gunicorn>=21.0.0
+
+# 构建依赖
+setuptools>=65.0.0
+wheel>=0.40.0
