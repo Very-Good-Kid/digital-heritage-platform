@@ -40,6 +40,9 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('wills') }}" id="willForm">
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
                         <div class="mb-3">
                             <label for="title" class="form-label">遗嘱标题 *</label>
                             <input type="text" class="form-control" id="title" name="title" required
@@ -163,6 +166,7 @@
                                                 <i class="bi bi-file-earmark-pdf"></i>
                                             </a>
                                             <form method="POST" action="{{ url_for('delete_will', will_id=will.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <button type="submit" class="btn btn-outline-danger" title="删除" onclick="return confirm('确定要删除这个遗嘱吗？')">
                                                     <i class="bi bi-trash"></i>
                                                 </button>

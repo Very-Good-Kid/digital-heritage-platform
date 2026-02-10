@@ -34,9 +34,8 @@
         <!-- 添加资产表单 -->
         <div class="col-lg-4 mb-4">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header">
                     <h5><i class="bi bi-plus-circle"></i> 添加数字资产</h5>
-                    <span class="badge bg-secondary">结构化表单</span>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('assets') }}">
@@ -56,15 +55,14 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="password" class="form-label">密码</label>
+                            <label for="password" class="form-label">密码（选填）</label>
                             <div class="input-group">
                                 <input type="password" class="form-control" id="password" name="password"
-                                       placeholder="选填，将加密存储">
+                                       placeholder="将加密存储，可留空">
                                 <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
-                            <div class="form-text">密码将加密存储，确保安全</div>
                         </div>
 
                         <div class="mb-3">
@@ -79,8 +77,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="notes" class="form-label">备注说明</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                            <label for="notes" class="form-label">备注</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"
                                       placeholder="添加任何有用的信息..."></textarea>
                         </div>
 
@@ -241,11 +239,15 @@ document.getElementById('togglePassword').addEventListener('click', function() {
 document.querySelectorAll('.decrypt-btn').forEach(function(button) {
     button.addEventListener('click', function() {
         const assetId = this.getAttribute('data-asset-id');
+        
+        // 获取CSRF token
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
 
         fetch(`/assets/${assetId}/decrypt`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             }
         })
         .then(response => response.json())
@@ -259,6 +261,7 @@ document.querySelectorAll('.decrypt-btn').forEach(function(button) {
             }
         })
         .catch(error => {
+            console.error('解密错误:', error);
             alert('解密失败，请重试');
         });
     });
