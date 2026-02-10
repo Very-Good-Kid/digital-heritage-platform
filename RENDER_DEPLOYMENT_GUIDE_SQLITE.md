@@ -67,7 +67,7 @@ git add .
 git commit -m "Initial commit - 数字遗产继承平台（SQLite版本）"
 
 # 添加远程仓库（替换 YOUR_USERNAME 为您的 GitHub 用户名）
-git remote add origin https://github.com/YOUR_USERNAME/digital-heritage-platform.git
+git remote add origin https://github.com/Very-Good-Kid/digital-heritage-platform.git
 
 # 推送代码到 GitHub
 git branch -M main

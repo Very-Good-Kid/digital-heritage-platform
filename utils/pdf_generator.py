@@ -9,42 +9,11 @@ from reportlab.pdfbase.ttfonts import TTFont
 import os
 from datetime import datetime
 
+# 导入字体管理模块
+from utils.fonts import register_chinese_font, get_chinese_font_name, get_chinese_bold_font_name
+
 # 注册中文字体
-def register_chinese_fonts():
-    """注册中文字体"""
-    font_paths = [
-        # Windows 字体
-        ('C:\\Windows\\Fonts\\msyh.ttc', 0, 'msyhbd.ttc', 0),
-        ('C:\\Windows\\Fonts\\simhei.ttf', 0, None, 0),
-        ('C:\\Windows\\Fonts\\simsun.ttc', 0, None, 0),
-        # Linux 字体
-        ('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', 0, None, 0),
-        ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 0, None, 0),
-        ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 0, None, 0),
-        # Mac 字体
-        ('/System/Library/Fonts/PingFang.ttc', 1, None, 0),
-        ('/System/Library/Fonts/STHeiti Light.ttc', 0, None, 0),
-    ]
-
-    for font_path, subfont_index, bold_path, bold_subfont in font_paths:
-        try:
-            if os.path.exists(font_path):
-                pdfmetrics.registerFont(TTFont('SimHei', font_path, subfontIndex=subfont_index))
-                if bold_path and os.path.exists(bold_path):
-                    pdfmetrics.registerFont(TTFont('SimHei-Bold', bold_path, subfontIndex=bold_subfont))
-                else:
-                    pdfmetrics.registerFont(TTFont('SimHei-Bold', font_path, subfontIndex=subfont_index))
-                print(f"Successfully registered Chinese font: {font_path}")
-                return True
-        except Exception as e:
-            print(f"Failed to register font {font_path}: {e}")
-            continue
-
-    print("Warning: No Chinese font found, PDF may display garbled text")
-    return False
-
-# 注册字体
-fonts_registered = register_chinese_fonts()
+fonts_registered = register_chinese_font()
 
 def generate_will_pdf(will):
     """
@@ -77,13 +46,9 @@ def generate_will_pdf(will):
     # 创建样式
     styles = getSampleStyleSheet()
 
-    # 根据字体注册情况选择字体
-    if fonts_registered:
-        normal_font = 'SimHei'
-        bold_font = 'SimHei-Bold'
-    else:
-        normal_font = 'Helvetica'
-        bold_font = 'Helvetica-Bold'
+    # 使用字体管理模块获取字体名称
+    normal_font = get_chinese_font_name()
+    bold_font = get_chinese_bold_font_name()
 
     # 自定义样式
     title_style = ParagraphStyle(
