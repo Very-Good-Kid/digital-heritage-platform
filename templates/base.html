@@ -79,10 +79,19 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.15);
         }
 
+        /* 默认卡片头部样式 */
         .card-header {
-            background-color: var(--primary-color);
-            color: white;
+            background-color: #f8f9fa;
+            color: var(--dark-text);
             border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+        }
+
+        /* 特殊深色背景的卡片头部 */
+        .card-header.bg-primary,
+        .card-header.bg-success,
+        .card-header.bg-danger {
+            color: white !important;
         }
 
         .btn-primary {
@@ -172,8 +181,10 @@
             color: var(--primary-color);
         }
 
+        /* 只为有深色背景的卡片头部设置白色文字 */
         .card .card-header {
-            color: white;
+            color: var(--primary-color);
+            font-weight: 600;
         }
 
         /* 深色背景的文字颜色 */
@@ -182,6 +193,11 @@
         .bg-danger,
         .bg-warning,
         .bg-info {
+            color: white !important;
+        }
+
+        /* 确保深色背景的卡片头部文字为白色 */
+        .card-header[style*="background"] {
             color: white !important;
         }
 
