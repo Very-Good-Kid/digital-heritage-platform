@@ -3,7 +3,7 @@
 {% block title %}常见问题 - 数字遗产继承平台{% endblock %}
 
 {% block content %}
-<div class="container py-4" style="min-height: calc(100vh - 400px);">
+<div class="container py-4">
     <div class="row mb-4">
         <div class="col-12">
             <h2><i class="bi bi-question-circle"></i> 常见问题解答</h2>
@@ -21,9 +21,9 @@
                     <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist">
                         {% for category in categories %}
                         <button class="nav-link {% if loop.first %}active{% endif %}"
-                                id="v-pills-{{ loop.index }}-tab"
+                                id="v-pills-{{ category }}-tab"
                                 data-bs-toggle="pill"
-                                data-bs-target="#v-pills-{{ loop.index }}"
+                                data-bs-target="#v-pills-{{ category }}"
                                 type="button"
                                 role="tab">
                             {{ category }}
@@ -36,92 +36,57 @@
 
         <div class="col-md-9">
             <div class="tab-content" id="v-pills-tabContent">
-                {% set current_category = '' %}
-                {% set category_index = 0 %}
-                {% for faq in faqs %}
-                    {% if faq.category != current_category %}
-                        {% if current_category != '' %}
-            </div>
-                        {% endif %}
-                        {% set current_category = faq.category %}
-                        {% set category_index = category_index + 1 %}
-            <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
-                 id="v-pills-{{ category_index }}"
-                 role="tabpanel">
-            <div class="accordion" id="accordion{{ category_index }}">
-                    {% endif %}
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="heading{{ faq.id }}">
-                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapse{{ faq.id }}">
-                            {{ faq.question }}
-                        </button>
-                    </h2>
-                    <div id="collapse{{ faq.id }}"
-                         class="accordion-collapse collapse {% if loop.first and category_index == 1 %}show{% endif %}"
-                         data-bs-parent="#accordion{{ category_index }}">
-                        <div class="accordion-body">
-                            {{ faq.answer }}
+                {% for category in categories %}
+                <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+                     id="v-pills-{{ category }}"
+                     role="tabpanel">
+                    <div class="accordion" id="accordion-{{ category }}">
+                        {% for faq in faqs %}
+                            {% if faq.category == category %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ faq.id }}">
+                                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapse{{ faq.id }}">
+                                    {{ faq.question }}
+                                </button>
+                            </h2>
+                            <div id="collapse{{ faq.id }}"
+                                 class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                                 data-bs-parent="#accordion-{{ category }}">
+                                <div class="accordion-body">
+                                    {{ faq.answer }}
+                                </div>
+                            </div>
                         </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
-</div>
 
-<!-- 联系我们 -->
-<div class="row mt-5">
-    <div class="col-12">
-        <div class="card bg-light">
-            <div class="card-body text-center">
-                <h5><i class="bi bi-chat-dots"></i> 没有找到您的问题？</h5>
-                <p class="text-muted">如果您有其他疑问，欢迎联系我们</p>
-                <div class="d-flex justify-content-center gap-3">
-                    <a href="mailto:contact@digitalheritage.com" class="btn btn-primary">
-                        <i class="bi bi-envelope"></i> 发送邮件
-                    </a>
-                    <a href="tel:400-888-8888" class="btn btn-success">
-                        <i class="bi bi-telephone"></i> 电话咨询
-                    </a>
+    <!-- 联系我们 -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h5><i class="bi bi-chat-dots"></i> 没有找到您的问题？</h5>
+                    <p class="text-muted">如果您有其他疑问，欢迎联系我们</p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="mailto:contact@digitalheritage.com" class="btn btn-primary">
+                            <i class="bi bi-envelope"></i> 发送邮件
+                        </a>
+                        <a href="tel:400-888-8888" class="btn btn-success">
+                            <i class="bi bi-telephone"></i> 电话咨询
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-</div>
-
-<!-- 页脚 -->
-<footer class="footer">
-    <div class="container">
-        <div class="row" style="color: #ecf0f1 !important">
-            <div class="col-md-4">
-                <h5>数字遗产继承平台</h5>
-                <p class="text-muted">一站式数字遗产规划与继承服务平台</p>
-            </div>
-            <div class="col-md-4">
-                <h5>快速链接</h5>
-                <ul class="list-unstyled">
-                    <li><a href="{{ url_for('policies') }}">平台政策矩阵</a></li>
-                    <li><a href="{{ url_for('inheritance_guide') }}">继承导航</a></li>
-                    <li><a href="{{ url_for('faq') }}">常见问题</a></li>
-                </ul>
-            </div>
-            <div class="col-md-4">
-                <h5>联系我们</h5>
-                <p class="text-muted">
-                    <i class="bi bi-envelope"></i> contact@digitalheritage.com<br>
-                    <i class="bi bi-telephone"></i> 400-888-8888
-                </p>
-            </div>
-        </div>
-        <hr style="border-color: rgba(255,255,255,0.1);">
-        <div class="text-center text-muted">
-            <small>&copy; 2026 数字遗产继承平台. 保留所有权利.</small>
-        </div>
-    </div>
-</footer>
 {% endblock %}

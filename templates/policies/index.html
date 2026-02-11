@@ -19,35 +19,115 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover table-bordered">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>平台名称</th>
-                                    <th>政策内容</th>
-                                    <th>平台态度</th>
-                                    <th>继承可能性</th>
-                                    <th>客服联系方式</th>
+                        <table class="table table-hover table-bordered" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #ffffff !important; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                                    <th scope="col" style="width: 15%; color: #ffffff !important; font-weight: 700; font-size: 1.1em; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-building me-2"></i>平台名称
+                                    </th>
+                                    <th scope="col" style="width: 30%; color: #ffffff !important; font-weight: 700; font-size: 1.1em; padding: 1rem; border: none; background: transparent !important;">
+                                        <i class="bi bi-file-text me-2"></i>政策内容
+                                    </th>
+                                    <th scope="col" style="width: 15%; color: #ffffff !important; font-weight: 700; font-size: 1.1em; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-emoji-neutral me-2"></i>平台态度
+                                    </th>
+                                    <th scope="col" style="width: 15%; color: #ffffff !important; font-weight: 700; font-size: 1.1em; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-graph-up me-2"></i>继承可能性
+                                    </th>
+                                    <th scope="col" style="width: 25%; color: #ffffff !important; font-weight: 700; font-size: 1.1em; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-telephone me-2"></i>客服联系方式
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for policy in policies %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ policy.platform_name }}</strong>
+                                <tr style="transition: all 0.3s ease; background-color: {% if loop.index % 2 == 0 %}#f8f9fa{% else %}white{% endif %};">
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div class="badge rounded-circle me-2" style="
+                                                width: 45px; 
+                                                height: 45px; 
+                                                display: flex; 
+                                                align-items: center; 
+                                                justify-content: center; 
+                                                font-weight: bold; 
+                                                font-size: 1.1em;
+                                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                                color: white;
+                                                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                                                {{ policy.platform_name[0] }}
+                                            </div>
+                                            <div>
+                                                <strong style="font-size: 1.15em; color: #333;">{{ policy.platform_name }}</strong>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td>{{ policy.policy_content }}</td>
-                                    <td>
-                                        <span class="badge bg-{% if policy.attitude == '明确禁止' %}danger{% elif policy.attitude == '态度模糊' %}warning{% elif policy.attitude == '有限支持' %}info{% else %}success{% endif %}">
-                                            {{ policy.attitude }}
-                                        </span>
+                                    <td style="vertical-align: middle; color: #495057; padding: 1rem; font-size: 0.95em;">
+                                        {{ policy.policy_content }}
                                     </td>
-                                    <td>
-                                        <span class="badge bg-{% if policy.inherit_possibility == '低' %}danger{% elif policy.inherit_possibility == '中' %}warning{% else %}success{% endif %}">
-                                            {{ policy.inherit_possibility }}
-                                        </span>
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div style="text-align: center;">
+                                            <span class="badge rounded-pill px-4 py-2" style="
+                                                {% if policy.attitude == '明确禁止' %}
+                                                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                                                    color: white;
+                                                    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+                                                {% elif policy.attitude == '态度模糊' %}
+                                                    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+                                                    color: #212529;
+                                                    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+                                                {% elif policy.attitude == '有限支持' %}
+                                                    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+                                                    color: white;
+                                                    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+                                                {% else %}
+                                                    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+                                                    color: white;
+                                                    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+                                                {% endif %}
+                                                font-weight: 600; font-size: 0.95em; letter-spacing: 0.5px;">
+                                                {{ policy.attitude }}
+                                            </span>
+                                        </div>
                                     </td>
-                                    <td>
-                                        <i class="bi bi-telephone"></i> {{ policy.customer_service }}
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div style="text-align: center;">
+                                            <span class="badge rounded-pill px-4 py-2" style="
+                                                {% if policy.inherit_possibility == '低' %}
+                                                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                                                    color: white;
+                                                    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+                                                {% elif policy.inherit_possibility == '中' %}
+                                                    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+                                                    color: #212529;
+                                                    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+                                                {% else %}
+                                                    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+                                                    color: white;
+                                                    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+                                                {% endif %}
+                                                font-weight: 600; font-size: 0.95em; letter-spacing: 0.5px;">
+                                                {{ policy.inherit_possibility }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div style="
+                                                background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+                                                color: white;
+                                                width: 40px;
+                                                height: 40px;
+                                                border-radius: 50%;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                                margin-right: 10px;
+                                                box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);">
+                                                <i class="bi bi-telephone-fill" style="font-size: 1.2em;"></i>
+                                            </div>
+                                            <span style="font-weight: 600; color: #333; font-size: 1em;">{{ policy.customer_service }}</span>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}

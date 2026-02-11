@@ -19,6 +19,9 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('inheritance_guide') }}">
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
                         <div class="mb-4">
                             <label class="form-label fw-bold">第一步：选择目标平台</label>
                             <div class="row">
