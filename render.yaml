@@ -15,3 +15,4 @@ services:
       name: data
       sizeGB: 1
       mountPath: /opt/render/project/data
+    region: oregon
