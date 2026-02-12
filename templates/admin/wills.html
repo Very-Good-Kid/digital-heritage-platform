@@ -1,0 +1,150 @@
+{% extends "admin/base.html" %}
+
+{% block title %}数字遗嘱 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">数字遗嘱</h1>
+        <p class="page-subtitle">管理所有用户的数字遗嘱</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card table-card mb-4">
+    <div class="card-body py-3">
+        <form class="row g-3 align-items-center" id="filterForm">
+            <div class="col-md-6">
+                <input type="text" class="form-control search-input" name="search" placeholder="搜索标题或描述..."
+                       value="{{ search }}">
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" name="status">
+                    <option value="all" {{ 'selected' if status == 'all' }}>全部状态</option>
+                    <option value="draft" {{ 'selected' if status == 'draft' }}>草稿</option>
+                    <option value="confirmed" {{ 'selected' if status == 'confirmed' }}>已确认</option>
+                    <option value="archived" {{ 'selected' if status == 'archived' }}>已归档</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> 搜索
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Wills Table -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户</th>
+                        <th>标题</th>
+                        <th>描述</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for will in pagination.items %}
+                    <tr>
+                        <td>{{ will.id }}</td>
+                        <td>{{ will.user.username if will.user else 'Unknown' }}</td>
+                        <td>{{ will.title }}</td>
+                        <td>{{ will.description[:50] + '...' if will.description else '-' }}</td>
+                        <td>
+                            {% if will.status == 'draft' %}
+                            <span class="badge badge-soft-warning"><i class="bi bi-pencil-fill me-1"></i>草稿</span>
+                            {% elif will.status == 'confirmed' %}
+                            <span class="badge badge-soft-success"><i class="bi bi-check-circle-fill me-1"></i>已确认</span>
+                            {% else %}
+                            <span class="badge badge-soft-secondary"><i class="bi bi-archive-fill me-1"></i>已归档</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ will.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteWill({{ will.id }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.wills', page=pagination.prev_num, search=search, status=status) }}">
+                        上一页
+                    </a>
+                </li>
+                {% endif %}
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.wills', page=page_num, search=search, status=status) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.wills', page=pagination.next_num, search=search, status=status) }}">
+                        下一页
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const search = this.search.value;
+    const status = this.status.value;
+    window.location.href = `{{ url_for('admin.wills') }}?search=${encodeURIComponent(search)}&status=${status}`;
+});
+
+function deleteWill(willId) {
+    if (!confirm('确定要删除此遗嘱吗？此操作不可恢复！')) return;
+
+    showLoading();
+    apiCall(`/admin/api/wills/${willId}`, {
+        method: 'DELETE'
+    })
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    })
+    .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+</script>
+{% endblock %}

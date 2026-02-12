@@ -5,15 +5,13 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
-      - key: SECRET_KEY
-        generateValue: true
-      - key: DATABASE_URL
-        value: sqlite:////opt/render/project/data/digital_heritage.db
       - key: FLASK_ENV
         value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: RENDER_DATA_DIR
+        value: /opt/render/project/data
     disk:
       name: data
-      mountPath: /opt/render/project/data
       sizeGB: 1
-    # Python 版本配置
-    pythonVersion: "3.10"
+      mountPath: /opt/render/project/data

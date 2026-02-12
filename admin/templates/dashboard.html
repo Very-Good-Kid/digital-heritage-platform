@@ -1,0 +1,424 @@
+{% extends "admin/base.html" %}
+
+{% block title %}仪表盘 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">仪表盘</h1>
+        <p class="page-subtitle">系统总览和数据统计</p>
+    </div>
+    <div>
+        <button class="btn btn-outline-secondary" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise me-2"></i>刷新数据
+        </button>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-primary position-relative">
+            <div class="card-header">
+                <i class="bi bi-people me-2"></i>总用户数
+            </div>
+            <div class="card-body">
+                <div class="stat-value" id="total-users">-</div>
+                <div class="stat-label">
+                    <span class="me-3">活跃: <strong id="active-users">-</strong></span>
+                    <span>管理员: <strong id="admin-users">-</strong></span>
+                </div>
+                <i class="bi bi-people stat-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-success position-relative">
+            <div class="card-header">
+                <i class="bi bi-collection me-2"></i>数字资产
+            </div>
+            <div class="card-body">
+                <div class="stat-value" id="total-assets">-</div>
+                <div class="stat-label">
+                    社交: <strong id="assets-social">-</strong> |
+                    金融: <strong id="assets-finance">-</strong>
+                </div>
+                <i class="bi bi-collection stat-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-info position-relative">
+            <div class="card-header">
+                <i class="bi bi-file-text me-2"></i>数字遗嘱
+            </div>
+            <div class="card-body">
+                <div class="stat-value" id="total-wills">-</div>
+                <div class="stat-label">
+                    草稿: <strong id="wills-draft">-</strong> |
+                    已确认: <strong id="wills-confirmed">-</strong>
+                </div>
+                <i class="bi bi-file-text stat-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-warning position-relative">
+            <div class="card-header">
+                <i class="bi bi-chat-quote me-2"></i>内容总数
+            </div>
+            <div class="card-body">
+                <div class="stat-value" id="total-content">-</div>
+                <div class="stat-label">
+                    FAQ: <strong id="total-faqs">-</strong> |
+                    故事: <strong id="total-stories">-</strong>
+                </div>
+                <i class="bi bi-chat-quote stat-icon"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card table-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up me-2"></i>用户增长趋势
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card table-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pie-chart me-2"></i>资产分类分布
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Chart -->
+<div class="row g-4">
+    <div class="col-lg-12">
+        <div class="card table-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-activity me-2"></i>系统活动统计（最近7天）
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Items -->
+<div class="row g-4 mt-2">
+    <div class="col-lg-12">
+        <div class="card table-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock me-2"></i>待处理事项
+                </h5>
+                <a href="{{ url_for('admin.stories', status='pending') }}" class="btn btn-sm btn-gradient-primary">
+                    查看全部
+                </a>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>描述</th>
+                            <th>数量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="bi bi-chat-quote text-primary me-2"></i>待审核故事</td>
+                            <td>需要管理员审核的用户故事</td>
+                            <td><span class="badge badge-soft-warning" id="pending-stories">-</span></td>
+                            <td>
+                                <a href="{{ url_for('admin.stories', status='pending') }}" class="btn btn-sm btn-outline-primary">
+                                    处理
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-people text-danger me-2"></i>禁用用户</td>
+                            <td>当前被禁用的用户账户</td>
+                            <td><span class="badge badge-soft-danger" id="inactive-users">-</span></td>
+                            <td>
+                                <a href="{{ url_for('admin.users', status='inactive') }}" class="btn btn-sm btn-outline-primary">
+                                    查看
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let growthChart, categoryChart, activityChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+});
+
+async function loadDashboardData() {
+    showLoading();
+    try {
+        const result = await safeJsonFetch('/admin/api/stats');
+
+        // API returns stats directly, no need to check result.success
+        updateStats(result);
+        await loadCharts();
+    } catch (error) {
+        console.error('加载仪表盘数据失败:', error);
+        alert('加载数据失败，请稍后重试');
+    } finally {
+        hideLoading();
+    }
+}
+
+function updateStats(data) {
+    const { users, assets, wills, content } = data;
+
+    // Users
+    document.getElementById('total-users').textContent = formatNumber(users.total);
+    document.getElementById('active-users').textContent = formatNumber(users.active);
+    document.getElementById('admin-users').textContent = formatNumber(users.admin);
+
+    // Assets
+    document.getElementById('total-assets').textContent = formatNumber(assets.total);
+    document.getElementById('assets-social').textContent = formatNumber(assets.by_category['社交'] || 0);
+    document.getElementById('assets-finance').textContent = formatNumber(assets.by_category['金融'] || 0);
+
+    // Wills
+    document.getElementById('total-wills').textContent = formatNumber(wills.total);
+    document.getElementById('wills-draft').textContent = formatNumber(wills.by_status['draft'] || 0);
+    document.getElementById('wills-confirmed').textContent = formatNumber(wills.by_status['confirmed'] || 0);
+
+    // Content
+    const totalContent = content.policies + content.faqs + content.stories;
+    document.getElementById('total-content').textContent = formatNumber(totalContent);
+    document.getElementById('total-faqs').textContent = formatNumber(content.faqs);
+    document.getElementById('total-stories').textContent = formatNumber(content.stories);
+
+    // Pending
+    document.getElementById('pending-stories').textContent = content.pending_stories;
+    document.getElementById('inactive-users').textContent = users.total - users.active;
+}
+
+async function loadCharts() {
+    await loadGrowthChart();
+    await loadCategoryChart();
+    await loadActivityChart();
+}
+
+async function loadGrowthChart() {
+    try {
+        const result = await safeJsonFetch('/admin/api/charts/growth?days=30');
+
+        if (growthChart) {
+            growthChart.destroy();
+        }
+
+        const ctx = document.getElementById('growthChart').getContext('2d');
+
+        // 检查是否有数据
+        const hasData = result.dates && result.dates.length > 0 && result.counts;
+
+        growthChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: hasData ? result.dates : ['暂无数据'],
+                datasets: [{
+                    label: '新注册用户',
+                    data: hasData ? result.counts : [0],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: hasData ? 4 : 0,
+                    pointHoverRadius: hasData ? 6 : 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: hasData,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('加载增长图表失败:', error);
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        growthChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['加载失败'],
+                datasets: [{
+                    label: '新注册用户',
+                    data: [0],
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+}
+
+async function loadCategoryChart() {
+    try {
+        const result = await safeJsonFetch('/admin/api/stats');
+
+        if (categoryChart) {
+            categoryChart.destroy();
+        }
+
+        const categories = result.assets.by_category || {};
+        const labels = Object.keys(categories);
+        const data = Object.values(categories);
+
+        const hasData = labels.length > 0 && data.some(v => v > 0);
+
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        categoryChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: hasData ? labels : ['暂无数据'],
+                datasets: [{
+                    data: hasData ? data : [1],
+                    backgroundColor: hasData ? [
+                        '#667eea',
+                        '#4facfe',
+                        '#f093fb',
+                        '#f5576c'
+                    ] : ['#e9ecef'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: hasData,
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('加载分类图表失败:', error);
+    }
+}
+
+async function loadActivityChart() {
+    try {
+        const result = await safeJsonFetch('/admin/api/charts/activity?days=7');
+
+        if (activityChart) {
+            activityChart.destroy();
+        }
+
+        const ctx = document.getElementById('activityChart').getContext('2d');
+
+        // 检查是否有数据
+        const hasData = result.dates && result.dates.length > 0;
+
+        activityChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: hasData ? result.dates : ['暂无数据'],
+                datasets: [
+                    {
+                        label: '新注册用户',
+                        data: hasData ? result.user_registrations : [0],
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)'
+                    },
+                    {
+                        label: '新建资产',
+                        data: hasData ? result.asset_created : [0],
+                        backgroundColor: 'rgba(79, 172, 254, 0.8)'
+                    },
+                    {
+                        label: '新建遗嘱',
+                        data: hasData ? result.will_created : [0],
+                        backgroundColor: 'rgba(240, 147, 251, 0.8)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: hasData,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('加载活动图表失败:', error);
+    }
+}
+</script>
+{% endblock %}

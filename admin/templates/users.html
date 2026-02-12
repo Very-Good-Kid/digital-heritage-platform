@@ -1,0 +1,435 @@
+{% extends "admin/base.html" %}
+
+{% block title %}用户管理 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">用户管理</h1>
+        <p class="page-subtitle">管理系统用户和权限</p>
+    </div>
+    <div>
+        <button class="btn btn-gradient-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <i class="bi bi-person-plus me-2"></i>添加用户
+        </button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card table-card mb-4">
+    <div class="card-body py-3">
+        <form class="row g-3" id="filterForm">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="search" placeholder="搜索用户名或邮箱..."
+                       value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="status">
+                    <option value="all" {{ 'selected' if status == 'all' }}>全部状态</option>
+                    <option value="active" {{ 'selected' if status == 'active' }}>活跃用户</option>
+                    <option value="inactive" {{ 'selected' if status == 'inactive' }}>禁用用户</option>
+                    <option value="admin" {{ 'selected' if status == 'admin' }}>管理员</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i>搜索
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>重置
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>资产数</th>
+                        <th>遗嘱数</th>
+                        <th>注册时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    {% for user in pagination.items %}
+                    <tr data-user-id="{{ user.id }}">
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            {% if user.is_admin %}
+                                <span class="badge badge-soft-primary">管理员</span>
+                            {% else %}
+                                <span class="badge badge-soft-secondary">普通用户</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                                <span class="badge badge-soft-success">活跃</span>
+                            {% else %}
+                                <span class="badge badge-soft-danger">禁用</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.digital_assets.count() }}</td>
+                        <td>{{ user.digital_wills.count() }}</td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-info" onclick="viewUser({{ user.id }})">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="editUser({{ user.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% if user.id != current_user.id %}
+                                <button class="btn btn-outline-danger" onclick="deleteUser({{ user.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.users', page=pagination.prev_num, search=search, status=status) }}">
+                        上一页
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.users', page=page_num, search=search, status=status) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.users', page=pagination.next_num, search=search, status=status) }}">
+                        下一页
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createUserForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">用户名 *</label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱 *</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码 *</label>
+                        <input type="password" class="form-control" name="password" required minlength="6">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_admin" id="isAdmin">
+                                <label class="form-check-label" for="isAdmin">
+                                    管理员权限
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="isActive" checked>
+                                <label class="form-check-label" for="isActive">
+                                    启用账户
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editUserForm">
+                <input type="hidden" name="user_id" id="editUserId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" name="username" id="editUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" name="email" id="editEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">新密码（留空则不修改）</label>
+                        <input type="password" class="form-control" name="password" id="editPassword" minlength="6">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_admin" id="editIsAdmin">
+                                <label class="form-check-label" for="editIsAdmin">
+                                    管理员权限
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="editIsActive">
+                                <label class="form-check-label" for="editIsActive">
+                                    启用账户
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View User Modal -->
+<div class="modal fade" id="viewUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">用户详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="userDetailContent">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filter form submit
+document.getElementById('filterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const search = this.search.value;
+    const status = this.status.value;
+    window.location.href = `{{ url_for('admin.users') }}?search=${encodeURIComponent(search)}&status=${status}`;
+});
+
+function resetFilters() {
+    window.location.href = '{{ url_for("admin.users") }}';
+}
+
+// Create User
+document.getElementById('createUserForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    data.is_admin = !!formData.get('is_admin');
+    data.is_active = !!formData.get('is_active');
+
+    showLoading();
+    try {
+        const response = await fetch('/admin/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '创建失败');
+        }
+    } catch (error) {
+        alert('创建失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+// Edit User
+function editUser(userId) {
+    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    const username = row.querySelector('td:nth-child(2)').textContent;
+    const email = row.querySelector('td:nth-child(3)').textContent;
+
+    document.getElementById('editUserId').value = userId;
+    document.getElementById('editUsername').value = username;
+    document.getElementById('editEmail').value = email;
+    document.getElementById('editPassword').value = '';
+
+    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+
+document.getElementById('editUserForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    data.is_admin = !!formData.get('is_admin');
+    data.is_active = !!formData.get('is_active');
+
+    showLoading();
+    try {
+        const response = await fetch(`/admin/api/users/${data.user_id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '更新失败');
+        }
+    } catch (error) {
+        alert('更新失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+// View User
+async function viewUser(userId) {
+    const modal = new bootstrap.Modal(document.getElementById('viewUserModal'));
+    modal.show();
+
+    try {
+        const response = await fetch(`/admin/api/users/${userId}`);
+        const result = await response.json();
+
+        const content = document.getElementById('userDetailContent');
+        if (result.success) {
+            const user = result.data;
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">基本信息</h6>
+                        <table class="table table-sm">
+                            <tr><td>ID:</td><td>${user.id}</td></tr>
+                            <tr><td>用户名:</td><td>${user.username}</td></tr>
+                            <tr><td>邮箱:</td><td>${user.email}</td></tr>
+                            <tr><td>管理员:</td><td>${user.is_admin ? '是' : '否'}</td></tr>
+                            <tr><td>状态:</td><td>${user.is_active ? '活跃' : '禁用'}</td></tr>
+                            <tr><td>注册时间:</td><td>${formatDate(user.created_at)}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">统计信息</h6>
+                        <table class="table table-sm">
+                            <tr><td>数字资产:</td><td>${user.assets_count}</td></tr>
+                            <tr><td>数字遗嘱:</td><td>${user.wills_count}</td></tr>
+                        </table>
+                        <h6 class="text-muted mb-2 mt-3">最近资产</h6>
+                        <ul class="list-unstyled">
+                            ${user.assets.map(a => `<li>${a.platform_name} - ${a.category}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        } else {
+            content.innerHTML = `<div class="alert alert-danger">加载失败</div>`;
+        }
+    } catch (error) {
+        document.getElementById('userDetailContent').innerHTML =
+            `<div class="alert alert-danger">加载失败: ${error.message}</div>`;
+    }
+}
+
+// Delete User
+function deleteUser(userId) {
+    if (!confirm('确定要删除此用户吗？此操作不可恢复！')) return;
+
+    showLoading();
+    fetch(`/admin/api/users/${userId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    })
+    .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+</script>
+{% endblock %}

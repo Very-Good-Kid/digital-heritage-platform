@@ -1,0 +1,230 @@
+{% extends "admin/base.html" %}
+
+{% block title %}常见问题 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">FAQ管理</h1>
+        <p class="page-subtitle">管理常见问题解答</p>
+    </div>
+    <div>
+        <button class="btn btn-gradient-primary" data-bs-toggle="modal" data-bs-target="#createFaqModal">
+            <i class="bi bi-plus-lg me-2"></i>添加FAQ
+        </button>
+    </div>
+</div>
+
+<!-- FAQs Table -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">序号</th>
+                        <th>分类</th>
+                        <th>问题</th>
+                        <th>答案</th>
+                        <th style="width: 100px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for faq in faqs %}
+                    <tr data-faq-id="{{ faq.id }}">
+                        <td>{{ faq.order }}</td>
+                        <td><span class="badge bg-secondary">{{ faq.category }}</span></td>
+                        <td>{{ faq.question }}</td>
+                        <td>{{ faq.answer[:80] + '...' if faq.answer }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-warning" onclick="editFaq({{ faq.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteFaq({{ faq.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create FAQ Modal -->
+<div class="modal fade" id="createFaqModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加FAQ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createFaqForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">问题 *</label>
+                        <input type="text" class="form-control" name="question" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">答案 *</label>
+                        <textarea class="form-control" name="answer" rows="4" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分类 *</label>
+                            <select class="form-select" name="category" required>
+                                <option value="基础概念">基础概念</option>
+                                <option value="保护措施">保护措施</option>
+                                <option value="法律问题">法律问题</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" name="order" value="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit FAQ Modal -->
+<div class="modal fade" id="editFaqModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑FAQ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editFaqForm">
+                <input type="hidden" name="faq_id" id="editFaqId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">问题</label>
+                        <input type="text" class="form-control" name="question" id="editQuestion" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">答案</label>
+                        <textarea class="form-control" name="answer" id="editAnswer" rows="4" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分类</label>
+                            <select class="form-select" name="category" id="editCategory" required>
+                                <option value="基础概念">基础概念</option>
+                                <option value="保护措施">保护措施</option>
+                                <option value="法律问题">法律问题</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" name="order" id="editOrder">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('createFaqForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+        const result = await safeJsonFetch('/admin/api/content/faqs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '创建失败');
+        }
+    } catch (error) {
+        alert('创建失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+function editFaq(faqId) {
+    const row = document.querySelector(`tr[data-faq-id="${faqId}"]`);
+    const order = row.querySelector('td:nth-child(1)').textContent;
+    const category = row.querySelector('td:nth-child(2)').textContent.trim();
+    const question = row.querySelector('td:nth-child(3)').textContent;
+    const answer = row.querySelector('td:nth-child(4)').textContent;
+
+    document.getElementById('editFaqId').value = faqId;
+    document.getElementById('editOrder').value = order;
+    document.getElementById('editCategory').value = category;
+    document.getElementById('editQuestion').value = question;
+    document.getElementById('editAnswer').value = answer;
+
+    new bootstrap.Modal(document.getElementById('editFaqModal')).show();
+}
+
+document.getElementById('editFaqForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+        const result = await safeJsonFetch(`/admin/api/content/faqs/${data.faq_id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '更新失败');
+        }
+    } catch (error) {
+        alert('更新失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+function deleteFaq(faqId) {
+    if (!confirm('确定要删除此FAQ吗？')) return;
+
+    showLoading();
+    safeJsonFetch(`/admin/api/content/faqs/${faqId}`, { method: 'DELETE' })
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    })
+    .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+</script>
+{% endblock %}

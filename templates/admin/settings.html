@@ -1,0 +1,159 @@
+{% extends "admin/base.html" %}
+
+{% block title %}系统设置 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">系统设置</h1>
+        <p class="page-subtitle">管理系统配置和选项</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- System Info -->
+    <div class="col-lg-6">
+        <div class="card table-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>系统信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>系统名称</td>
+                        <td>数字遗产管理平台</td>
+                    </tr>
+                    <tr>
+                        <td>版本</td>
+                        <td>v1.0.0</td>
+                    </tr>
+                    <tr>
+                        <td>数据库</td>
+                        <td>SQLite</td>
+                    </tr>
+                    <tr>
+                        <td>Python版本</td>
+                        <td>3.13+</td>
+                    </tr>
+                    <tr>
+                        <td>Flask版本</td>
+                        <td>3.0.0</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="col-lg-6">
+        <div class="card table-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart me-2"></i>快速统计
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="h3 mb-0">{{ User.query.count() }}</div>
+                            <div class="text-muted">总用户</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="h3 mb-0">{{ DigitalAsset.query.count() }}</div>
+                            <div class="text-muted">总资产</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="h3 mb-0">{{ DigitalWill.query.count() }}</div>
+                            <div class="text-muted">总遗嘱</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="h3 mb-0">{{ Story.query.filter_by(status='pending').count() }}</div>
+                            <div class="text-muted">待审核</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="col-lg-12">
+        <div class="card table-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-heart-pulse me-2"></i>系统健康
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="alert alert-success mb-0">
+                            <i class="bi bi-check-circle me-2"></i>数据库正常
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-success mb-0">
+                            <i class="bi bi-check-circle me-2"></i>文件系统正常
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-success mb-0">
+                            <i class="bi bi-check-circle me-2"></i>服务运行正常
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-success mb-0">
+                            <i class="bi bi-check-circle me-2"></i>所有组件正常
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="col-lg-12">
+        <div class="card table-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear me-2"></i>管理操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-house me-2"></i>返回前台
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-warning w-100" onclick="alert('缓存清理功能开发中')">
+                            <i class="bi bi-trash me-2"></i>清理缓存
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-info w-100" onclick="alert('数据备份功能开发中')">
+                            <i class="bi bi-download me-2"></i>备份数据
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-secondary w-100" onclick="alert('系统日志功能开发中')">
+                            <i class="bi bi-file-text me-2"></i>查看日志
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}{% endblock %}

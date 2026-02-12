@@ -1,0 +1,694 @@
+{% extends "admin/base.html" %}
+
+{% block title %}常见问题 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">FAQ管理</h1>
+        <p class="page-subtitle">管理常见问题解答</p>
+    </div>
+    <div>
+        <button class="btn btn-gradient-primary" data-bs-toggle="modal" data-bs-target="#createFaqModal">
+            <i class="bi bi-plus-lg me-2"></i>添加FAQ
+        </button>
+    </div>
+</div>
+
+<!-- FAQs Table -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive faq-table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th class="col-order">序号</th>
+                        <th class="col-category">分类</th>
+                        <th class="col-question">问题</th>
+                        <th class="col-answer">答案</th>
+                        <th class="col-action">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for faq in faqs %}
+                    <tr data-faq-id="{{ faq.id }}">
+                        <td>{{ faq.order }}</td>
+                        <td>
+                            {% if faq.category == '基础概念' %}
+                            <span class="badge badge-soft-primary"><i class="bi bi-lightbulb me-1"></i>{{ faq.category }}</span>
+                            {% elif faq.category == '保护措施' %}
+                            <span class="badge badge-soft-success"><i class="bi bi-shield-check me-1"></i>{{ faq.category }}</span>
+                            {% else %}
+                            <span class="badge badge-soft-info"><i class="bi bi-info-circle me-1"></i>{{ faq.category }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ faq.question }}</td>
+                        <td class="answer-cell-wrapper">
+                            <div class="faq-answer-wrapper">
+                                <div class="faq-answer-cell" data-full-answer="{{ faq.answer | e }}">
+                                    {{ faq.answer }}
+                                    <span class="btn-placeholder"></span>
+                                </div>
+                                <button class="faq-expand-btn" onclick="toggleFaqAnswer(this)">
+                                    <span class="btn-text">展开</span>
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-warning" onclick="editFaq({{ faq.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteFaq({{ faq.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 表格响应式容器 - 取消水平滚动 */
+.faq-table-responsive {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+/* 表格列宽设置 */
+.col-order {
+    width: 60px;
+    min-width: 60px;
+}
+
+.col-category {
+    width: 100px;
+    min-width: 100px;
+}
+
+.col-question {
+    width: 200px;
+    min-width: 180px;
+}
+
+.col-answer {
+    width: 400px;
+    min-width: 350px;
+    max-width: 400px;
+}
+
+.col-action {
+    width: 100px;
+    min-width: 100px;
+}
+
+/* 答案列单元格包装 */
+table tbody tr td.answer-cell-wrapper {
+    width: 400px;
+    max-width: 400px;
+    padding: 8px 10px 8px 10px !important;
+    vertical-align: top !important;
+}
+
+/* FAQ答案容器 */
+.faq-answer-wrapper {
+    position: relative;
+    padding: 0;
+    width: 100%;
+}
+
+/* FAQ答案卡片 - 新布局：前两行占满宽度，第三行与按钮同行 */
+.faq-answer-wrapper .faq-answer-cell {
+    position: relative;
+    padding: 14px 20px 12px 20px;
+    padding-right: 85px;
+    -webkit-line-clamp: 3;
+    max-height: 85px;
+    line-height: 1.7;
+    font-size: 0.875rem;
+    color: #1f2937;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    letter-spacing: 0.015em;
+    text-align: left;
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 段落间距优化 */
+.faq-answer-wrapper .faq-answer-cell p {
+    margin: 0 0 10px 0 !important;
+    line-height: 1.7 !important;
+    transition: margin 0.3s ease !important;
+    text-align: left !important;
+}
+
+.faq-answer-wrapper .faq-answer-cell p:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* 按钮占位符 - 让第三行文本与按钮在同一行 */
+.btn-placeholder {
+    display: inline-block;
+    width: 70px;
+    height: 32px;
+    vertical-align: bottom;
+}
+
+/* 答案卡片展开状态 */
+.faq-answer-wrapper .faq-answer-cell.expanded {
+    max-height: none;
+    background: #ffffff;
+    border-color: #d1d5db;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    display: block;
+    padding-bottom: 52px;
+    padding-right: 28px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.faq-answer-wrapper .faq-answer-cell.expanded .btn-placeholder {
+    display: none;
+}
+
+.faq-answer-wrapper .faq-answer-cell.expanded p {
+    margin-bottom: 10px !important;
+}
+
+/* 展开/收起按钮 - 固定在右下角 */
+.faq-answer-wrapper .faq-expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;  /* 未展开状态：增加2px（从6px到8px） */
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    padding: 7px 14px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    color: #64748b;
+    font-size: 0.77rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    z-index: 10;
+    opacity: 0.95;
+    min-width: 68px;
+    user-select: none;
+    height: 32px;
+}
+
+/* 按钮文字 */
+.faq-expand-btn .btn-text {
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+/* Unicode图标 - 收起状态（未展开）使用 '\f282' */
+.faq-expand-btn::before {
+    content: '\f282';
+    font-family: 'bootstrap-icons';
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    line-height: 1;
+}
+
+/* 展开状态 - 使用 '\f286' */
+.faq-expand-btn.expanded::before {
+    content: '\f286';
+    transform: none;
+}
+
+/* 悬停状态 */
+.faq-expand-btn:hover {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+    color: #475569 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
+    opacity: 1 !important;
+}
+
+.faq-expand-btn:hover::before {
+    transform: scale(1.05);
+}
+
+.faq-expand-btn.expanded:hover::before {
+    transform: none;
+}
+
+/* 点击状态 */
+.faq-expand-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 展开/收起状态统一样式 */
+.faq-expand-btn.expanded {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+    color: #475569 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+    gap: 6px;  /* 展开状态：恢复为6px */
+}
+
+
+/* 响应式优化 - 平板 */
+@media (max-width: 1200px) {
+    .col-answer {
+        width: 350px;
+        max-width: 350px;
+        min-width: 300px;
+    }
+
+    .answer-cell-wrapper {
+        width: 350px;
+        max-width: 350px;
+        padding: 7px 9px 7px 9px;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell {
+        font-size: 0.86rem;
+        padding: 12px 80px 14px 18px;
+        -webkit-line-clamp: 3;
+        max-height: 78px;
+        line-height: 1.7;
+        letter-spacing: 0.012em;
+        text-align: left;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell p {
+        margin: 0 0 9px 0;
+        line-height: 1.7;
+        text-align: left;
+    }
+
+    .faq-answer-wrapper .faq-expand-btn {
+        padding: 6px 13px;
+        font-size: 0.75rem;
+        min-width: 64px;
+        bottom: 10px;
+        right: 10px;
+        height: 30px;
+        gap: 8px;  /* 未展开状态：8px */
+    }
+
+    .faq-answer-wrapper .faq-expand-btn.expanded {
+        gap: 6px;  /* 展开状态：恢复为6px */
+    }
+
+    .btn-placeholder {
+        width: 68px;
+        height: 30px;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell.expanded {
+        padding-bottom: 46px;
+        padding-right: 26px;
+    }
+}
+
+/* 响应式优化 - 小屏幕 */
+@media (max-width: 992px) {
+    .col-answer {
+        width: 300px;
+        max-width: 300px;
+        min-width: 250px;
+    }
+
+    .answer-cell-wrapper {
+        width: 300px;
+        max-width: 300px;
+        padding: 7px 9px 7px 9px;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell {
+        font-size: 0.845rem;
+        padding: 10px 75px 13px 17px;
+        -webkit-line-clamp: 3;
+        max-height: 70px;
+        line-height: 1.68;
+        letter-spacing: 0.01em;
+        text-align: left;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell p {
+        margin: 0 0 9px 0;
+        line-height: 1.68;
+        text-align: left;
+    }
+
+    .col-question {
+        width: 180px;
+        min-width: 150px;
+    }
+
+    .faq-answer-wrapper .faq-expand-btn {
+        padding: 6px 12px;
+        font-size: 0.74rem;
+        min-width: 62px;
+        bottom: 10px;
+        right: 10px;
+        height: 28px;
+        gap: 8px;  /* 未展开状态：8px */
+    }
+
+    .faq-answer-wrapper .faq-expand-btn.expanded {
+        gap: 6px;  /* 展开状态：恢复为6px */
+    }
+
+    .btn-placeholder {
+        width: 64px;
+        height: 28px;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell.expanded {
+        padding-bottom: 44px;
+        padding-right: 24px;
+    }
+}
+
+/* 响应式优化 - 移动端 */
+@media (max-width: 768px) {
+    .faq-table-responsive {
+        overflow-x: auto;
+    }
+
+    .col-answer {
+        width: 280px;
+        max-width: 280px;
+        min-width: 200px;
+    }
+
+    .answer-cell-wrapper {
+        width: 280px;
+        max-width: 280px;
+        padding: 6px 8px 6px 8px;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell {
+        font-size: 0.82rem;
+        padding: 9px 72px 12px 16px;
+        -webkit-line-clamp: 3;
+        max-height: 66px;
+        line-height: 1.65;
+        letter-spacing: 0.008em;
+        text-align: left;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell p {
+        margin: 0 0 8px 0;
+        line-height: 1.65;
+        text-align: left;
+    }
+
+    .faq-answer-wrapper .faq-expand-btn {
+        padding: 6px 11px;
+        font-size: 0.72rem;
+        min-width: 58px;
+        bottom: 8px;
+        right: 8px;
+        height: 26px;
+        gap: 8px;  /* 未展开状态：8px */
+    }
+
+    .faq-answer-wrapper .faq-expand-btn.expanded {
+        gap: 6px;  /* 展开状态：恢复为6px */
+    }
+
+    .btn-placeholder {
+        width: 60px;
+        height: 26px;
+    }
+
+    .faq-answer-wrapper .faq-answer-cell.expanded {
+        padding-bottom: 42px;
+        padding-right: 22px;
+    }
+
+    .col-question {
+        width: 150px;
+        min-width: 130px;
+    }
+}
+</style>
+
+<!-- Create FAQ Modal -->
+<div class="modal fade" id="createFaqModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加FAQ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createFaqForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">问题 *</label>
+                        <input type="text" class="form-control" name="question" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">答案 *</label>
+                        <textarea class="form-control" name="answer" rows="4" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分类 *</label>
+                            <select class="form-select" name="category" required>
+                                <option value="基础概念">基础概念</option>
+                                <option value="保护措施">保护措施</option>
+                                <option value="法律问题">法律问题</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" name="order" value="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit FAQ Modal -->
+<div class="modal fade" id="editFaqModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑FAQ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editFaqForm">
+                <input type="hidden" name="faq_id" id="editFaqId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">问题</label>
+                        <input type="text" class="form-control" name="question" id="editQuestion" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">答案</label>
+                        <textarea class="form-control" name="answer" id="editAnswer" rows="4" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分类</label>
+                            <select class="form-select" name="category" id="editCategory" required>
+                                <option value="基础概念">基础概念</option>
+                                <option value="保护措施">保护措施</option>
+                                <option value="法律问题">法律问题</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" name="order" id="editOrder">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 强制应用FAQ样式 - 解决样式优先级问题
+function forceApplyFaqStyles() {
+    console.log('开始应用FAQ样式...');
+    const answerCells = document.querySelectorAll('.faq-answer-cell');
+    console.log('找到的答案单元格数量:', answerCells.length);
+
+    // 强制应用包装器样式
+    const answerWrappers = document.querySelectorAll('.faq-answer-wrapper');
+    
+    answerWrappers.forEach(wrapper => {
+        wrapper.style.position = 'relative';
+        wrapper.style.padding = '0';
+        wrapper.style.width = '100%';
+    });
+
+    console.log('FAQ样式已强制应用');
+    console.log('应用样式的答案单元格数量:', answerCells.length);
+    console.log('应用样式的按钮数量:', expandBtns.length);
+    console.log('应用样式的包装器数量:', answerWrappers.length);
+}
+
+// 展开/收起FAQ答案 - 改进交互
+function toggleFaqAnswer(button) {
+    const wrapper = button.closest('.faq-answer-wrapper');
+    const answerCell = wrapper.querySelector('.faq-answer-cell');
+
+    // 切换展开状态
+    answerCell.classList.toggle('expanded');
+    button.classList.toggle('expanded');
+
+    // 更新按钮文字 - 图标使用CSS伪元素控制
+    const span = button.querySelector('.btn-text');
+    if (answerCell.classList.contains('expanded')) {
+        span.textContent = '收起';
+    } else {
+        span.textContent = '展开';
+    }
+}
+
+// 初始化：检测哪些答案需要显示展开按钮 - 改进检测逻辑
+document.addEventListener('DOMContentLoaded', function() {
+    const answerCells = document.querySelectorAll('.faq-answer-cell');
+    const answerWrappers = document.querySelectorAll('.faq-answer-wrapper');
+
+    answerWrappers.forEach(wrapper => {
+        wrapper.style.position = 'relative';
+        wrapper.style.padding = '0';
+        wrapper.style.width = '100%';
+    });
+
+    answerCells.forEach(cell => {
+        // 检测内容是否被截断
+        const isTruncated = cell.scrollHeight > cell.clientHeight;
+
+        if (isTruncated) {
+            // 显示展开按钮
+            const wrapper = cell.closest('.faq-answer-wrapper');
+            const expandBtn = wrapper.querySelector('.faq-expand-btn');
+            expandBtn.style.display = 'flex';
+        } else {
+            // 内容不超出，隐藏展开按钮
+            const wrapper = cell.closest('.faq-answer-wrapper');
+            const expandBtn = wrapper.querySelector('.faq-expand-btn');
+            expandBtn.style.display = 'none';
+        }
+    });
+});
+
+document.getElementById('createFaqForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+        const result = await apiCall('/admin/api/content/faqs', {
+            method: 'POST',
+            body: data
+        });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '创建失败');
+        }
+    } catch (error) {
+        alert('创建失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+function editFaq(faqId) {
+    const row = document.querySelector(`tr[data-faq-id="${faqId}"]`);
+    const order = row.querySelector('td:nth-child(1)').textContent;
+    const category = row.querySelector('td:nth-child(2)').textContent.trim();
+    const question = row.querySelector('td:nth-child(3)').textContent;
+    const answerCell = row.querySelector('.faq-answer-cell');
+    const answer = answerCell.getAttribute('data-full-answer');
+
+    document.getElementById('editFaqId').value = faqId;
+    document.getElementById('editOrder').value = order;
+    document.getElementById('editCategory').value = category;
+    document.getElementById('editQuestion').value = question;
+    document.getElementById('editAnswer').value = answer;
+
+    new bootstrap.Modal(document.getElementById('editFaqModal')).show();
+}
+
+document.getElementById('editFaqForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+        const result = await apiCall(`/admin/api/content/faqs/${data.faq_id}`, {
+            method: 'PUT',
+            body: data
+        });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '更新失败');
+        }
+    } catch (error) {
+        alert('更新失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+function deleteFaq(faqId) {
+    if (!confirm('确定要删除此FAQ吗？')) return;
+
+    showLoading();
+    apiCall(`/admin/api/content/faqs/${faqId}`, { method: 'DELETE' })
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    })
+    .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+</script>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "admin/base.html" %}
+
+{% block title %}数字资产 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">数字资产</h1>
+        <p class="page-subtitle">管理所有用户的数字资产</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card table-card mb-4">
+    <div class="card-body py-3">
+        <form class="row g-3" id="filterForm">
+            <div class="col-md-5">
+                <input type="text" class="form-control" name="search" placeholder="搜索平台名称或账号..."
+                       value="{{ search }}">
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" name="category">
+                    <option value="all" {{ 'selected' if category == 'all' }}>全部分类</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {{ 'selected' if category == cat }}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i>搜索
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Assets Table -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户</th>
+                        <th>平台名称</th>
+                        <th>账号</th>
+                        <th>分类</th>
+                        <th>备注</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="assetsTableBody">
+                    {% for asset in pagination.items %}
+                    <tr>
+                        <td>{{ asset.id }}</td>
+                        <td>{{ asset.user.username if asset.user else 'Unknown' }}</td>
+                        <td>{{ asset.platform_name }}</td>
+                        <td>{{ asset.account }}</td>
+                        <td>
+                            {% if asset.category == '社交' %}
+                            <span class="badge badge-soft-primary">社交</span>
+                            {% elif asset.category == '金融' %}
+                            <span class="badge badge-soft-success">金融</span>
+                            {% elif asset.category == '记忆' %}
+                            <span class="badge badge-soft-info">记忆</span>
+                            {% else %}
+                            <span class="badge badge-soft-warning">虚拟财产</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ asset.notes[:20] if asset.notes else '-' }}</td>
+                        <td>{{ asset.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAsset({{ asset.id }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.assets', page=pagination.prev_num, search=search, category=category) }}">
+                        上一页
+                    </a>
+                </li>
+                {% endif %}
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.assets', page=page_num, search=search, category=category) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.assets', page=pagination.next_num, search=search, category=category) }}">
+                        下一页
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const search = this.search.value;
+    const category = this.category.value;
+    window.location.href = `{{ url_for('admin.assets') }}?search=${encodeURIComponent(search)}&category=${category}`;
+});
+
+function deleteAsset(assetId) {
+    if (!confirm('确定要删除此资产吗？')) return;
+
+    showLoading();
+    fetch(`/admin/api/assets/${assetId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    })
+    .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+</script>
+{% endblock %}

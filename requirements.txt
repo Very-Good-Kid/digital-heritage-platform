@@ -22,9 +22,4 @@ python-dotenv>=1.0.0
 email-validator>=2.0.0
 WTForms>=3.0.0
 
-# WSGI服务器
-gunicorn>=21.0.0
-
-# 构建依赖
-setuptools>=65.0.0
-wheel>=0.40.0
+# 后台管理依赖（Bootstrap 5 和 Chart.js 通过CDN引入，无需额外依赖）

@@ -4,7 +4,6 @@ from datetime import timedelta
 class Config:
     """应用配置类"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///digital_heritage.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
@@ -15,21 +14,27 @@ class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True
 
+    # 数据持久化目录 - 使用绝对路径
+    DATA_DIR = os.path.abspath('instance')
+
+    # 开发环境使用本地数据库 - 使用绝对路径
+    # SQLite URI格式：sqlite:///path/to/database.db (3个斜杠，即使对于绝对路径)
+    db_path = os.path.join(DATA_DIR, 'digital_heritage.db')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f'sqlite:///{db_path}'
+
 class ProductionConfig(Config):
     """生产环境配置"""
     DEBUG = False
-    # 使用环境变量获取数据库URL，Render会自动设置
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///digital_heritage.db'
-    # 确保SQLite URL格式正确
-    if SQLALCHEMY_DATABASE_URI.startswith('sqlite://'):
-        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace('sqlite://', 'sqlite:///')
 
-    # 确保数据目录存在
-    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or 'uploads'
     # 使用 Render 的持久化磁盘
     DATA_DIR = os.environ.get('RENDER_DATA_DIR') or '/opt/render/project/data'
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR, exist_ok=True)
+
+    # 数据库文件存储在持久化目录
+    db_path = os.path.join(DATA_DIR, 'digital_heritage.db')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f'sqlite:///{db_path}'
+
+    # 上传文件夹也使用持久化目录
+    UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 
 config = {
     'development': DevelopmentConfig,

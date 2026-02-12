@@ -1,0 +1,282 @@
+{% extends "admin/base.html" %}
+
+{% block title %}平台政策 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">平台政策管理</h1>
+        <p class="page-subtitle">管理各数字平台的继承政策</p>
+    </div>
+    <div>
+        <button class="btn btn-gradient-primary" data-bs-toggle="modal" data-bs-target="#createPolicyModal">
+            <i class="bi bi-plus-lg me-2"></i>添加政策
+        </button>
+    </div>
+</div>
+
+<!-- Policies Table -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>平台名称</th>
+                        <th>政策内容</th>
+                        <th>态度</th>
+                        <th>继承可能性</th>
+                        <th>客服电话</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for policy in policies %}
+                    <tr data-policy-id="{{ policy.id }}">
+                        <td><strong>{{ policy.platform_name }}</strong></td>
+                        <td>{{ policy.policy_content[:50] + '...' if policy.policy_content }}</td>
+                        <td>
+                            {% if policy.attitude == '明确禁止' %}
+                            <span class="badge badge-soft-danger"><i class="bi bi-x-circle-fill me-1"></i>明确禁止</span>
+                            {% elif policy.attitude == '有限支持' %}
+                            <span class="badge badge-soft-warning"><i class="bi bi-exclamation-circle-fill me-1"></i>有限支持</span>
+                            {% elif policy.attitude == '主动服务' %}
+                            <span class="badge badge-soft-success"><i class="bi bi-check-circle-fill me-1"></i>主动服务</span>
+                            {% else %}
+                            <span class="badge badge-soft-info"><i class="bi bi-question-circle-fill me-1"></i>态度模糊</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if policy.inherit_possibility == '高' %}
+                            <span class="badge badge-soft-success"><i class="bi bi-arrow-up-circle-fill me-1"></i>高</span>
+                            {% elif policy.inherit_possibility == '中' %}
+                            <span class="badge badge-soft-warning"><i class="bi bi-dash-circle-fill me-1"></i>中</span>
+                            {% else %}
+                            <span class="badge badge-soft-danger"><i class="bi bi-arrow-down-circle-fill me-1"></i>低</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ policy.customer_service or '-' }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-warning" onclick="editPolicy({{ policy.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deletePolicy({{ policy.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Policy Modal -->
+<div class="modal fade" id="createPolicyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加平台政策</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createPolicyForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">平台名称 *</label>
+                            <input type="text" class="form-control" name="platform_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">态度 *</label>
+                            <select class="form-select" name="attitude" required>
+                                <option value="明确禁止">明确禁止</option>
+                                <option value="态度模糊">态度模糊</option>
+                                <option value="有限支持">有限支持</option>
+                                <option value="主动服务">主动服务</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">继承可能性 *</label>
+                            <select class="form-select" name="inherit_possibility" required>
+                                <option value="低">低</option>
+                                <option value="中">中</option>
+                                <option value="高">高</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">客服电话</label>
+                            <input type="text" class="form-control" name="customer_service">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">政策内容 *</label>
+                        <textarea class="form-control" name="policy_content" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">法律依据</label>
+                        <textarea class="form-control" name="legal_basis" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">风险提示</label>
+                        <textarea class="form-control" name="risk_warning" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Policy Modal -->
+<div class="modal fade" id="editPolicyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑平台政策</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editPolicyForm">
+                <input type="hidden" name="policy_id" id="editPolicyId">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">平台名称</label>
+                            <input type="text" class="form-control" name="platform_name" id="editPlatformName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">态度</label>
+                            <select class="form-select" name="attitude" id="editAttitude" required>
+                                <option value="明确禁止">明确禁止</option>
+                                <option value="态度模糊">态度模糊</option>
+                                <option value="有限支持">有限支持</option>
+                                <option value="主动服务">主动服务</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">继承可能性</label>
+                            <select class="form-select" name="inherit_possibility" id="editInheritPossibility" required>
+                                <option value="低">低</option>
+                                <option value="中">中</option>
+                                <option value="高">高</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">客服电话</label>
+                            <input type="text" class="form-control" name="customer_service" id="editCustomerService">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">政策内容</label>
+                        <textarea class="form-control" name="policy_content" id="editPolicyContent" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">法律依据</label>
+                        <textarea class="form-control" name="legal_basis" id="editLegalBasis" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">风险提示</label>
+                        <textarea class="form-control" name="risk_warning" id="editRiskWarning" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('createPolicyForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+        const result = await apiCall('/admin/api/content/policies', {
+            method: 'POST',
+            body: data
+        });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '创建失败');
+        }
+    } catch (error) {
+        alert('创建失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+function editPolicy(policyId) {
+    const row = document.querySelector(`tr[data-policy-id="${policyId}"]`);
+    const platformName = row.querySelector('td:nth-child(1)').textContent.trim();
+    const policyContent = row.querySelector('td:nth-child(2)').textContent.trim();
+
+    document.getElementById('editPolicyId').value = policyId;
+    document.getElementById('editPlatformName').value = platformName;
+    document.getElementById('editPolicyContent').value = policyContent;
+
+    new bootstrap.Modal(document.getElementById('editPolicyModal')).show();
+}
+
+document.getElementById('editPolicyForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+        const result = await apiCall(`/admin/api/content/policies/${data.policy_id}`, {
+            method: 'PUT',
+            body: data
+        });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '更新失败');
+        }
+    } catch (error) {
+        alert('更新失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+function deletePolicy(policyId) {
+    if (!confirm('确定要删除此政策吗？')) return;
+
+    showLoading();
+    apiCall(`/admin/api/content/policies/${policyId}`, { method: 'DELETE' })
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    })
+    .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+</script>
+{% endblock %}

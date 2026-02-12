@@ -149,10 +149,10 @@
                             </thead>
                             <tbody>
                                 {% for will in wills %}
-                                <tr>
+                                <tr data-will-id="{{ will.id }}" data-current-status="{{ will.status }}">
                                     <td>{{ will.title }}</td>
                                     <td>
-                                        <span class="badge bg-{% if will.status == 'draft' %}secondary{% elif will.status == 'confirmed' %}success{% else %}dark{% endif %}">
+                                        <span class="badge bg-{% if will.status == 'draft' %}secondary{% elif will.status == 'confirmed' %}success{% else %}dark{% endif %} status-badge">
                                             {% if will.status == 'draft' %}草稿{% elif will.status == 'confirmed' %}已确认{% else %}已归档{% endif %}
                                         </span>
                                     </td>
@@ -165,6 +165,28 @@
                                             <a href="{{ url_for('generate_pdf', will_id=will.id) }}" class="btn btn-outline-success" title="下载PDF">
                                                 <i class="bi bi-file-earmark-pdf"></i>
                                             </a>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" title="修改状态">
+                                                    <i class="bi bi-three-dots"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item status-change-item" href="#" data-status="draft" data-will-id="{{ will.id }}">
+                                                            <i class="bi bi-pencil-square me-2"></i>草稿
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item status-change-item" href="#" data-status="confirmed" data-will-id="{{ will.id }}">
+                                                            <i class="bi bi-check-circle me-2"></i>已确认
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item status-change-item" href="#" data-status="archived" data-will-id="{{ will.id }}">
+                                                            <i class="bi bi-archive me-2"></i>已归档
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                             <form method="POST" action="{{ url_for('delete_will', will_id=will.id) }}" class="d-inline">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <button type="submit" class="btn btn-outline-danger" title="删除" onclick="return confirm('确定要删除这个遗嘱吗？')">
@@ -237,6 +259,101 @@ document.getElementById('willForm').addEventListener('submit', function(e) {
     document.getElementById('assets_data').value = JSON.stringify(assetsData);
     this.submit();
 });
+
+// 状态修改功能
+document.querySelectorAll('.status-change-item').forEach(item => {
+    item.addEventListener('click', async function(e) {
+        e.preventDefault();
+
+        const willId = this.getAttribute('data-will-id');
+        const newStatus = this.getAttribute('data-status');
+        const statusLabels = {
+            'draft': '草稿',
+            'confirmed': '已确认',
+            'archived': '已归档'
+        };
+
+        console.log('开始修改遗嘱状态...');
+        console.log('遗嘱ID:', willId);
+        console.log('新状态:', newStatus);
+        console.log('状态标签:', statusLabels[newStatus]);
+
+        if (!confirm(`确定要将遗嘱状态改为"${statusLabels[newStatus]}"吗？`)) {
+            console.log('用户取消操作');
+            return;
+        }
+
+        try {
+            const url = `/wills/${willId}/status`;
+            console.log('请求URL:', url);
+
+            // 获取CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            console.log('CSRF Token:', csrfToken);
+
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // 如果有CSRF token，添加到请求头
+            if (csrfToken) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            console.log('响应状态码:', response.status);
+            console.log('响应类型:', response.headers.get('content-type'));
+
+            const result = await response.json();
+            console.log('响应结果:', result);
+
+            if (result.success) {
+                // 更新UI显示
+                const row = document.querySelector(`tr[data-will-id="${willId}"]`);
+                const badge = row.querySelector('.status-badge');
+
+                // 移除旧的badge类
+                badge.classList.remove('bg-secondary', 'bg-success', 'bg-dark');
+
+                // 添加新的badge类
+                if (newStatus === 'draft') {
+                    badge.classList.add('bg-secondary');
+                } else if (newStatus === 'confirmed') {
+                    badge.classList.add('bg-success');
+                } else {
+                    badge.classList.add('bg-dark');
+                }
+
+                // 更新文本
+                badge.textContent = statusLabels[newStatus];
+
+                // 更新data属性
+                row.setAttribute('data-current-status', newStatus);
+
+                // 添加视觉反馈 - 临时高亮行
+                row.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 1000);
+
+                console.log('状态更新成功');
+            } else {
+                console.log('状态更新失败:', result.message);
+                alert(result.message || '状态更新失败');
+            }
+        } catch (error) {
+            console.error('状态更新错误:', error);
+            console.error('错误堆栈:', error.stack);
+            alert('状态更新失败，请重试');
+        }
+    });
+});
 </script>
 {% endblock %}
+{# 闭合 content block #}
 {% endblock %}

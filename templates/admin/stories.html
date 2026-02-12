@@ -1,0 +1,182 @@
+{% extends "admin/base.html" %}
+
+{% block title %}故事管理 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">故事管理</h1>
+        <p class="page-subtitle">管理用户分享的数字遗产故事</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card table-card mb-4">
+    <div class="card-body py-3">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <select class="form-select" onchange="location.href='{{ url_for('admin.stories') }}?status=' + this.value">
+                    <option value="all" {{ 'selected' if status == 'all' }}>全部状态</option>
+                    <option value="pending" {{ 'selected' if status == 'pending' }}>待审核</option>
+                    <option value="approved" {{ 'selected' if status == 'approved' }}>已通过</option>
+                    <option value="rejected" {{ 'selected' if status == 'rejected' }}>已拒绝</option>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <div class="text-muted text-end small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    待审核的故事需要管理员审核后才能在前台显示
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stories Table -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>标题</th>
+                        <th>内容</th>
+                        <th>作者</th>
+                        <th>分类</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for story in pagination.items %}
+                    <tr>
+                        <td>{{ story.title }}</td>
+                        <td>{{ story.content[:60] + '...' if story.content }}</td>
+                        <td>{{ story.author or '匿名' }}</td>
+                        <td>{{ story.category }}</td>
+                        <td>
+                            {% if story.status == 'pending' %}
+                            <span class="badge badge-soft-warning"><i class="bi bi-clock-fill me-1"></i>待审核</span>
+                            {% elif story.status == 'approved' %}
+                            <span class="badge badge-soft-success"><i class="bi bi-check-circle-fill me-1"></i>已通过</span>
+                            {% else %}
+                            <span class="badge badge-soft-danger"><i class="bi bi-x-circle-fill me-1"></i>已拒绝</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ story.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if story.status == 'pending' %}
+                                <button class="btn btn-outline-success" onclick="approveStory({{ story.id }})">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="rejectStory({{ story.id }})">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-outline-danger" onclick="deleteStory({{ story.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.stories', page=pagination.prev_num, status=status) }}">上一页</a>
+                </li>
+                {% endif %}
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.stories', page=page_num, status=status) }}">{{ page_num }}</a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.stories', page=pagination.next_num, status=status) }}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function approveStory(storyId) {
+    if (!confirm('确定要通过审核吗？')) return;
+
+    showLoading();
+    try {
+        const result = await apiCall(`/admin/api/content/stories/${storyId}/approve`, { method: 'POST' });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '操作失败');
+        }
+    } catch (error) {
+        alert('操作失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function rejectStory(storyId) {
+    if (!confirm('确定要拒绝此故事吗？')) return;
+
+    showLoading();
+    try {
+        const result = await apiCall(`/admin/api/content/stories/${storyId}/reject`, { method: 'POST' });
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '操作失败');
+        }
+    } catch (error) {
+        alert('操作失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function deleteStory(storyId) {
+    if (!confirm('确定要删除此故事吗？')) return;
+
+    showLoading();
+    apiCall(`/admin/api/content/stories/${storyId}`, { method: 'DELETE' })
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    })
+    .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+</script>
+{% endblock %}

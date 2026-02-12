@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}后台管理系统{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --sidebar-width: 250px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            min-height: 100vh;
+            background: var(--primary-gradient);
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-brand {
+            color: white;
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-brand i {
+            font-size: 1.8rem;
+        }
+
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 12px 25px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            border-left-color: #fff;
+        }
+
+        .sidebar-menu a i {
+            width: 24px;
+            margin-right: 10px;
+        }
+
+        .sidebar-menu .menu-category {
+            padding: 15px 25px 5px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+        }
+
+        .page-subtitle {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-card .card-header {
+            padding: 20px 25px;
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+
+        .stat-card .card-body {
+            padding: 25px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .stat-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Gradients for cards */
+        .bg-gradient-primary {
+            background: var(--primary-gradient);
+        }
+
+        .bg-gradient-success {
+            background: var(--success-gradient);
+        }
+
+        .bg-gradient-info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .bg-gradient-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        /* Tables */
+        .table-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+
+        .table-card .card-header {
+            background: white;
+            border-bottom: 1px solid #eee;
+            padding: 20px 25px;
+        }
+
+        .table-card .card-body {
+            padding: 0;
+        }
+
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #eee;
+            padding: 15px;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+        }
+
+        /* Badges */
+        .badge-soft-success {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+
+        .badge-soft-warning {
+            background-color: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+
+        .badge-soft-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+
+        .badge-soft-info {
+            background-color: rgba(23, 162, 184, 0.1);
+            color: #17a2b8;
+        }
+
+        /* Buttons */
+        .btn-gradient-primary {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-gradient-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        /* Forms */
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            padding: 12px 15px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+
+        /* Modal */
+        .modal-content {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            border: none;
+            padding: 20px 25px;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .modal-footer {
+            border: none;
+            padding: 20px 25px;
+        }
+
+        /* Chart containers */
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            height: 400px;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                min-height: auto;
+                position: relative;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Flash messages */
+        .flash-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 350px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message">
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'error' else 'warning' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="{{ url_for('admin.dashboard') }}" class="sidebar-brand">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>后台管理</span>
+                </a>
+            </div>
+            <div class="sidebar-menu">
+                <div class="menu-category">概览</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>仪表盘</span>
+                </a>
+
+                <div class="menu-category">数据管理</div>
+                <a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint == 'admin.users' }}">
+                    <i class="bi bi-people"></i>
+                    <span>用户管理</span>
+                </a>
+                <a href="{{ url_for('admin.assets') }}" class="{{ 'active' if request.endpoint == 'admin.assets' }}">
+                    <i class="bi bi-collection"></i>
+                    <span>数字资产</span>
+                </a>
+                <a href="{{ url_for('admin.wills') }}" class="{{ 'active' if request.endpoint == 'admin.wills' }}">
+                    <i class="bi bi-file-text"></i>
+                    <span>数字遗嘱</span>
+                </a>
+
+                <div class="menu-category">内容管理</div>
+                <a href="{{ url_for('admin.policies') }}" class="{{ 'active' if request.endpoint == 'admin.policies' }}">
+                    <i class="bi bi-book"></i>
+                    <span>平台政策</span>
+                </a>
+                <a href="{{ url_for('admin.faqs') }}" class="{{ 'active' if request.endpoint == 'admin.faqs' }}">
+                    <i class="bi bi-question-circle"></i>
+                    <span>常见问题</span>
+                </a>
+                <a href="{{ url_for('admin.stories') }}" class="{{ 'active' if request.endpoint == 'admin.stories' }}">
+                    <i class="bi bi-chat-quote"></i>
+                    <span>故事管理</span>
+                </a>
+                <a href="{{ url_for('index') }}">
+                    <i class="bi bi-arrow-left-circle"></i>
+                    <span>返回前台</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content flex-grow-1">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Common Functions -->
+    <script>
+        // Auto-hide flash messages
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.flash-message .alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 150);
+                }, 5000);
+            });
+        });
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Format number
+        function formatNumber(num) {
+            return new Intl.NumberFormat('zh-CN').format(num);
+        }
+
+        // Show loading
+        function showLoading() {
+            const overlay = document.createElement('div');
+            overlay.className = 'loading-overlay';
+            overlay.id = 'loading-overlay';
+            overlay.innerHTML = `
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        // Hide loading
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        // Safe JSON parse with error handling
+        async function safeJsonFetch(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                const contentType = response.headers.get('content-type');
+                
+                // Check if response is JSON
+                if (contentType && contentType.includes('application/json')) {
+                    return await response.json();
+                }
+                
+                // If not JSON, try to parse text
+                const text = await response.text();
+                
+                // If response starts with '<!doctype', it's HTML
+                if (text.toLowerCase().startsWith('<!doctype') || text.toLowerCase().startsWith('<html')) {
+                    throw new Error('服务器返回了错误页面，请检查权限或登录状态');
+                }
+                
+                // Try to parse as JSON anyway
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    throw new Error('无法解析服务器响应');
+                }
+            } catch (error) {
+                throw error;
+            }
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

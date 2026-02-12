@@ -25,8 +25,9 @@ def generate_will_pdf(will):
     Returns:
         PDF文件路径
     """
-    # 创建输出目录
-    output_dir = 'temp_pdfs'
+    # 使用配置中的持久化目录
+    from flask import current_app
+    output_dir = os.path.join(current_app.config.get('DATA_DIR', 'temp_pdfs'), 'temp_pdfs')
     os.makedirs(output_dir, exist_ok=True)
 
     # 生成文件名

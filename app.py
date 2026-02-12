@@ -2,16 +2,35 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 from models import db, User, DigitalAsset, DigitalWill, PlatformPolicy, Story, FAQ
 from utils.encryption import encrypt_data, decrypt_data
 from utils.pdf_generator import generate_will_pdf
 from config import config
 
+# 注册后台管理蓝图
+from admin import admin_bp
+
+# 辅助函数
+def get_china_time():
+    """获取中国时区的当前时间"""
+    utc_now = datetime.now(timezone.utc)
+    china_tz = timezone(timedelta(hours=8))
+    return utc_now.astimezone(china_tz)
+
 # 初始化Flask应用
 app = Flask(__name__)
 app.config.from_object(config['default'])
+
+# 确保数据目录存在（在应用启动前）
+data_dir = app.config.get('DATA_DIR', 'instance')
+if not os.path.exists(data_dir):
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        print(f"Created data directory: {data_dir}")
+    except Exception as e:
+        print(f"Warning: Could not create data directory {data_dir}: {e}")
 
 # 初始化CSRF保护
 csrf = CSRFProtect(app)
@@ -22,6 +41,9 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = '请先登录访问此页面'
+
+# 注册蓝图
+app.register_blueprint(admin_bp)
 
 # 创建必要的目录
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -95,7 +117,16 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             login_user(user, remember=remember)
             next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('dashboard'))
+
+            # 如果指定了next页面，跳转到next页面
+            if next_page:
+                return redirect(next_page)
+
+            # 管理员跳转到后台，普通用户跳转到用户仪表盘
+            if user.is_admin:
+                return redirect(url_for('admin.dashboard'))
+            else:
+                return redirect(url_for('dashboard'))
         else:
             flash('用户名或密码错误', 'error')
 
@@ -114,8 +145,17 @@ def logout():
 @login_required
 def dashboard():
     """用户仪表盘"""
-    assets = DigitalAsset.query.filter_by(user_id=current_user.id).all()
-    wills = DigitalWill.query.filter_by(user_id=current_user.id).all()
+    # 应用多租户数据隔离
+    assets = DigitalAsset.query
+    wills = DigitalWill.query
+
+    # 管理员可以看所有数据，普通用户只能看自己的数据
+    if not current_user.is_admin:
+        assets = assets.filter_by(user_id=current_user.id)
+        wills = wills.filter_by(user_id=current_user.id)
+
+    assets = assets.order_by(DigitalAsset.created_at.desc()).all()
+    wills = wills.order_by(DigitalWill.created_at.desc()).all()
     return render_template('dashboard/index.html', assets=assets, wills=wills)
 
 # 路由：数字资产清单
@@ -151,7 +191,12 @@ def assets():
 
         return redirect(url_for('assets'))
 
-    assets = DigitalAsset.query.filter_by(user_id=current_user.id).order_by(DigitalAsset.created_at.desc()).all()
+    # 应用多租户数据隔离
+    assets_query = DigitalAsset.query
+    if not current_user.is_admin:
+        assets_query = assets_query.filter_by(user_id=current_user.id)
+
+    assets = assets_query.order_by(DigitalAsset.created_at.desc()).all()
     categories = ['社交', '金融', '记忆', '虚拟财产']
     return render_template('assets/index.html', assets=assets, categories=categories)
 
@@ -413,7 +458,7 @@ def edit_asset(asset_id):
         if password:
             asset.encrypted_password = encrypt_data(password)
 
-        asset.updated_at = datetime.utcnow()
+        asset.updated_at = get_china_time()
 
         try:
             db.session.commit()
@@ -505,8 +550,16 @@ def wills():
             db.session.rollback()
             flash('创建失败，请重试', 'error')
 
-    wills = DigitalWill.query.filter_by(user_id=current_user.id).order_by(DigitalWill.created_at.desc()).all()
-    assets = DigitalAsset.query.filter_by(user_id=current_user.id).all()
+    # 应用多租户数据隔离
+    wills_query = DigitalWill.query
+    assets_query = DigitalAsset.query
+
+    if not current_user.is_admin:
+        wills_query = wills_query.filter_by(user_id=current_user.id)
+        assets_query = assets_query.filter_by(user_id=current_user.id)
+
+    wills = wills_query.order_by(DigitalWill.created_at.desc()).all()
+    assets = assets_query.all()
     return render_template('wills/index.html', wills=wills, assets=assets)
 
 @app.route('/wills/download-template/<format>')
@@ -878,6 +931,127 @@ def delete_will(will_id):
 
     return redirect(url_for('wills'))
 
+
+@app.route('/wills/<int:will_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_will(will_id):
+    """编辑数字遗嘱"""
+    will = DigitalWill.query.get_or_404(will_id)
+
+    # 权限控制：只能编辑自己的遗嘱
+    if will.user_id != current_user.id:
+        flash('无权访问此遗嘱', 'error')
+        return redirect(url_for('wills'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        heir_info = request.form.get('heir_info', '')
+        special_notes = request.form.get('special_notes', '')
+        assets_data = request.form.get('assets_data', '{}')
+        new_status = request.form.get('status', will.status)
+
+        # 状态变更权限控制
+        # 只有管理员可以设置confirmed或archived状态
+        # 用户自己只能设置为draft状态
+        if new_status != will.status:
+            if not current_user.is_admin:
+                if new_status != 'draft':
+                    flash('只有管理员可以将遗嘱状态设置为已确认或已归档', 'error')
+                    return redirect(url_for('edit_will', will_id=will_id))
+            else:
+                # 管理员可以更改任何状态
+                will.status = new_status
+
+        # 验证JSON格式
+        try:
+            if assets_data:
+                import json
+                assets_data_json = json.loads(assets_data)
+            else:
+                assets_data_json = {}
+        except json.JSONDecodeError:
+            assets_data_json = {}
+
+        # 将新字段合并到assets_data中
+        if heir_info:
+            assets_data_json['heir_info'] = heir_info
+        if special_notes:
+            assets_data_json['special_notes'] = special_notes
+
+        # 更新其他字段
+        if title:
+            will.title = title
+        if description:
+            will.description = description
+        will.assets_data = assets_data_json
+        will.updated_at = get_china_time()
+
+        try:
+            db.session.commit()
+            flash('遗嘱更新成功', 'success')
+            return redirect(url_for('wills'))
+        except Exception as e:
+            db.session.rollback()
+            flash('更新失败，请重试', 'error')
+
+    assets = DigitalAsset.query.filter_by(user_id=current_user.id).all()
+    return render_template('wills/edit.html', will=will, assets=assets)
+
+
+@app.route('/wills/<int:will_id>/status', methods=['POST'])
+@login_required
+def update_will_status(will_id):
+    """更新遗嘱状态"""
+    will = DigitalWill.query.get_or_404(will_id)
+
+    # 权限控制
+    if will.user_id != current_user.id and not current_user.is_admin:
+        flash('无权访问此遗嘱', 'error')
+        return redirect(url_for('wills'))
+
+    new_status = request.json.get('status')
+
+    # 状态值验证
+    valid_statuses = ['draft', 'confirmed', 'archived']
+    if new_status not in valid_statuses:
+        return jsonify({'success': False, 'message': '无效的状态值'}), 400
+
+    # 业务规则：
+    # 1. 用户只能将自己的遗嘱从draft改为confirmed
+    # 2. 只有管理员可以将遗嘱设置为archived
+    # 3. 一旦confirmed，不能改回draft（需管理员权限）
+    if not current_user.is_admin:
+        # 非管理员用户
+        if will.status == 'draft' and new_status == 'confirmed':
+            # 用户可以将草稿确认为正式遗嘱
+            will.status = new_status
+        elif will.status == 'confirmed' and new_status == 'confirmed':
+            # 已经是确认状态，无需更改
+            pass
+        else:
+            # 其他状态变更需要管理员权限
+            return jsonify({
+                'success': False,
+                'message': '只有管理员可以将遗嘱状态设置为已确认或已归档'
+            }), 403
+    else:
+        # 管理员可以更改任何状态
+        will.status = new_status
+
+    will.updated_at = get_china_time()
+
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': '遗嘱状态更新成功',
+            'new_status': will.status
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
+
 # 路由：平台政策矩阵
 @app.route('/policies')
 def policies():
@@ -1021,6 +1195,41 @@ def stories():
     stories = Story.query.filter_by(status='approved').order_by(Story.created_at.desc()).all()
     return render_template('stories/index.html', stories=stories)
 
+
+@app.route('/stories/submit', methods=['POST'])
+@login_required
+def submit_story():
+    """提交故事"""
+    try:
+        title = request.form.get('title')
+        category = request.form.get('category')
+        content = request.form.get('content')
+        author = request.form.get('author')
+
+        if not all([title, category, content, author]):
+            return jsonify({'success': False, 'message': '请填写所有必填字段'}), 400
+
+        # 创建故事，状态设为待审核
+        story = Story(
+            title=title,
+            category=category,
+            content=content,
+            author=author,
+            status='pending'
+        )
+
+        db.session.add(story)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '故事提交成功！管理员将在审核后发布。'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'提交失败: {str(e)}'}), 500
+
 # 路由：FAQ
 @app.route('/faq')
 def faq():
@@ -1037,6 +1246,7 @@ def about():
     """关于我们"""
     return render_template('about.html')
 
+# 路由：后台管理
 # 初始化数据库和示例数据
 @app.before_request
 def initialize_database():
