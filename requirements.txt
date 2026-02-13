@@ -5,6 +5,9 @@ Flask-Login==0.6.3
 Flask-WTF==1.2.1
 Werkzeug==3.0.1
 
+# PostgreSQL驱动（用于Supabase）
+psycopg2-binary>=2.9.9
+
 # WSGI服务器
 gunicorn>=21.0.0
 

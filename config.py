@@ -26,15 +26,36 @@ class ProductionConfig(Config):
     """生产环境配置"""
     DEBUG = False
 
-    # 使用 Render 的持久化磁盘
-    DATA_DIR = os.environ.get('RENDER_DATA_DIR') or '/opt/render/project/data'
+    # 生产环境优先使用Supabase PostgreSQL（免费且持久化）
+    DATABASE_URL = os.environ.get('DATABASE_URL')
 
-    # 数据库文件存储在持久化目录
-    db_path = os.path.join(DATA_DIR, 'digital_heritage.db')
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f'sqlite:///{db_path}'
+    if DATABASE_URL:
+        # 修复PostgreSQL连接字符串格式
+        # 将 postgres:// 替换为 postgresql://
+        if DATABASE_URL.startswith('postgres://'):
+            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
-    # 上传文件夹也使用持久化目录
-    UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
+        # 添加连接池参数以提高性能
+        DATABASE_URL += '?pool_pre_ping=True&pool_size=5&max_overflow=10'
+
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+        print(f"✅ 使用外部PostgreSQL数据库: {DATABASE_URL.split('@')[0]}@...")
+    else:
+        # 如果没有提供DATABASE_URL，使用SQLite（不推荐用于生产）
+        DATA_DIR = os.environ.get('RENDER_DATA_DIR') or '/opt/render/project/data'
+        db_path = os.path.join(DATA_DIR, 'digital_heritage.db')
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
+        print("⚠️  警告: 生产环境使用SQLite，数据可能丢失！建议配置Supabase PostgreSQL。")
+
+    # 上传文件夹使用临时目录（Render免费版）
+    UPLOAD_FOLDER = '/tmp/uploads'
+
+    # 确保上传目录存在
+    if not os.path.exists(UPLOAD_FOLDER):
+        try:
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        except:
+            pass
 
 config = {
     'development': DevelopmentConfig,
