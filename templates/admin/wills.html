@@ -59,13 +59,14 @@
                         <td>{{ will.title }}</td>
                         <td>{{ will.description[:50] + '...' if will.description else '-' }}</td>
                         <td>
-                            {% if will.status == 'draft' %}
-                            <span class="badge badge-soft-warning"><i class="bi bi-pencil-fill me-1"></i>草稿</span>
-                            {% elif will.status == 'confirmed' %}
-                            <span class="badge badge-soft-success"><i class="bi bi-check-circle-fill me-1"></i>已确认</span>
-                            {% else %}
-                            <span class="badge badge-soft-secondary"><i class="bi bi-archive-fill me-1"></i>已归档</span>
-                            {% endif %}
+                            <select class="form-select form-select-sm status-select"
+                                    data-will-id="{{ will.id }}"
+                                    data-current-status="{{ will.status }}"
+                                    onchange="updateWillStatus({{ will.id }}, this.value)">
+                                <option value="draft" {{ 'selected' if will.status == 'draft' }}>草稿</option>
+                                <option value="confirmed" {{ 'selected' if will.status == 'confirmed' }}>已确认</option>
+                                <option value="archived" {{ 'selected' if will.status == 'archived' }}>已归档</option>
+                            </select>
                         </td>
                         <td>{{ will.created_at.strftime('%Y-%m-%d') }}</td>
                         <td>
@@ -144,6 +145,32 @@ function deleteWill(willId) {
         }
     })
     .catch(error => alert('删除失败: ' + error.message))
+    .finally(() => hideLoading());
+}
+
+function updateWillStatus(willId, newStatus) {
+    const statusLabels = {
+        'draft': '草稿',
+        'confirmed': '已确认',
+        'archived': '已归档'
+    };
+
+    if (!confirm(`确定要将状态更改为 "${statusLabels[newStatus]}" 吗？`)) return;
+
+    showLoading();
+    apiCall(`/admin/api/wills/${willId}/status`, {
+        method: 'PUT',
+        body: { status: newStatus }
+    })
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || '状态更新失败');
+        }
+    })
+    .catch(error => alert('状态更新失败: ' + error.message))
     .finally(() => hideLoading());
 }
 </script>

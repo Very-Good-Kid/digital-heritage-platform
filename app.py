@@ -999,6 +999,7 @@ def edit_will(will_id):
     return render_template('wills/edit.html', will=will, assets=assets)
 
 
+
 @app.route('/wills/<int:will_id>/status', methods=['POST'])
 @login_required
 def update_will_status(will_id):
@@ -1018,28 +1019,28 @@ def update_will_status(will_id):
         return jsonify({'success': False, 'message': '无效的状态值'}), 400
 
     # 业务规则：
-    # 1. 用户只能将自己的遗嘱从draft改为confirmed
-    # 2. 只有管理员可以将遗嘱设置为archived
-    # 3. 一旦confirmed，不能改回draft（需管理员权限）
+    # 1. 用户只能在"草稿"和"已确认"之间切换
+    # 2. 用户不能将遗嘱改为"已归档"
+    # 3. 管理员可以更改任何状态，无限制
     if not current_user.is_admin:
         # 非管理员用户
-        if will.status == 'draft' and new_status == 'confirmed':
-            # 用户可以将草稿确认为正式遗嘱
-            will.status = new_status
-        elif will.status == 'confirmed' and new_status == 'confirmed':
-            # 已经是确认状态，无需更改
-            pass
+        # 允许在草稿和已确认之间切换
+        if new_status in ['draft', 'confirmed']:
+            if will.status != new_status:
+                will.status = new_status
         else:
-            # 其他状态变更需要管理员权限
+            # 用户尝试改为已归档，拒绝
             return jsonify({
                 'success': False,
-                'message': '只有管理员可以将遗嘱状态设置为已确认或已归档'
+                'message': '只有管理员可以将遗嘱状态设置为已归档'
             }), 403
     else:
-        # 管理员可以更改任何状态
+        # 管理员可以更改任何状态，无限制
         will.status = new_status
 
     will.updated_at = get_china_time()
+
+
 
     try:
         db.session.commit()

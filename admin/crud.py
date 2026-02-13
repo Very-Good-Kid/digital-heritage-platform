@@ -199,6 +199,33 @@ class WillCRUD:
             db.session.rollback()
             return jsonify({'success': False, 'message': f'Deletion failed: {str(e)}'}), 500
 
+    @staticmethod
+    def update_will_status(will_id, data):
+        """更新遗嘱状态"""
+        try:
+            will = DigitalWill.query.get_or_404(will_id)
+            new_status = data.get('status')
+
+            # 验证状态值
+            valid_statuses = ['draft', 'confirmed', 'archived']
+            if new_status not in valid_statuses:
+                return jsonify({
+                    'success': False,
+                    'message': f'无效的状态值，必须是: {", ".join(valid_statuses)}'
+                }), 400
+
+            will.status = new_status
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'遗嘱状态已更新为: {new_status}'
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Update failed: {str(e)}'}), 500
+
 
 will_crud = WillCRUD()
 

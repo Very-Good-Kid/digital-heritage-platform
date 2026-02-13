@@ -1,4 +1,4 @@
-"""
+﻿"""
 后台管理系统 - 视图和API路由
 """
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
@@ -419,6 +419,13 @@ def api_delete_will(will_id):
     return will_crud.delete_will(will_id)
 
 
+@admin_bp.route('/api/wills/<int:will_id>/status', methods=['PUT'])
+@csrf_exempt
+@admin_required
+def api_update_will_status(will_id):
+    """更新遗嘱状态API"""
+    return will_crud.update_will_status(will_id, request.json)
+
 # ============================================================================
 # 内容管理
 # ============================================================================
@@ -614,4 +621,5 @@ def settings():
         return redirect(url_for('index'))
 
     return render_template('admin/settings.html')
+
 

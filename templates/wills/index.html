@@ -278,11 +278,7 @@ document.querySelectorAll('.status-change-item').forEach(item => {
         console.log('新状态:', newStatus);
         console.log('状态标签:', statusLabels[newStatus]);
 
-        if (!confirm(`确定要将遗嘱状态改为"${statusLabels[newStatus]}"吗？`)) {
-            console.log('用户取消操作');
-            return;
-        }
-
+        // 不再显示确认对话框，直接执行修改
         try {
             const url = `/wills/${willId}/status`;
             console.log('请求URL:', url);
