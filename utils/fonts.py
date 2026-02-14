@@ -1,5 +1,5 @@
 """
-字体管理模块 - 修复版
+字体管理模块 - 优化版
 处理 PDF 生成中的中文字体问题
 支持 Windows、Linux (Render)、macOS 等多个平台
 """
@@ -33,19 +33,19 @@ def register_chinese_font():
         return True
 
     try:
-        # 1. 尝试使用系统字体
+        # 1. 尝试使用系统字体 - 按优先级排序
         font_paths = [
-            # Windows 字体
-            ('C:\\Windows\\Fonts\\simhei.ttf', 'SimHei', 'SimHei-Bold'),
-            ('C:\\Windows\\Fonts\\msyh.ttc', 'MicrosoftYaHei', 'MicrosoftYaHei-Bold', 0),
-            ('C:\\Windows\\Fonts\\simsun.ttc', 'SimSun', 'SimSun-Bold', 0),
-
-            # Linux (Render) 字体
+            # Linux (Render) 优先使用 Noto Sans CJK 和文泉驿
+            ('/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc', 'NotoSansCJK', 'NotoSansCJK-Bold', 0),
+            ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 'NotoSansCJK', 'NotoSansCJK-Bold', 0),
             ('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', 'WQYZenHei', 'WQYZenHei-Bold', 0),
             ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 'WQYMicroHei', 'WQYMicroHei-Bold', 0),
-            ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 'DejaVuSans', 'DejaVuSans-Bold'),
-            ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 'NotoSansCJK', 'NotoSansCJK-Bold', 0),
-            ('/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc', 'NotoSansCJK', 'NotoSansCJK-Bold', 0),
+            ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 'WQYMicroHei', 'WQYMicroHei-Bold', 1),
+
+            # Windows 字体
+            ('C:\\Windows\\Fonts\\msyh.ttc', 'MicrosoftYaHei', 'MicrosoftYaHei-Bold', 0),
+            ('C:\\Windows\\Fonts\\simhei.ttf', 'SimHei', 'SimHei-Bold'),
+            ('C:\\Windows\\Fonts\\simsun.ttc', 'SimSun', 'SimSun-Bold', 0),
 
             # macOS 字体
             ('/System/Library/Fonts/PingFang.ttc', 'PingFang', 'PingFang-Bold', 1),
@@ -67,7 +67,12 @@ def register_chinese_font():
 
                 if os.path.exists(path):
                     pdfmetrics.registerFont(TTFont(normal, path, subfontIndex=subfont))
-                    pdfmetrics.registerFont(TTFont(bold, path, subfontIndex=subfont))
+                    # 尝试注册粗体，如果失败则使用常规字体
+                    try:
+                        pdfmetrics.registerFont(TTFont(bold, path, subfontIndex=subfont))
+                    except:
+                        bold = normal  # 使用常规字体作为粗体
+
                     normal_font_name = normal
                     bold_font_name = bold
                     fonts_registered = True
@@ -77,13 +82,13 @@ def register_chinese_font():
                 print(f"[FAIL] Failed to register font {font_info[0]}: {e}")
                 continue
 
-        # 2. 如果系统字体不可用，尝试下载开源中文字体
+        # 2. 如果系统字体不可用，尝试下载开源中文字体（使用更可靠的源）
         print("[WARN] No system Chinese font found, attempting to download open-source font...")
 
         try:
-            # 使用文泉驿微米黑（开源中文字体）
-            font_url = "https://github.com/googlefonts/noto-cjk/releases/download/Sans2.004/02_NotoSansCJK-OTC.zip"
-            font_name = download_and_register_font(font_url)
+            # 使用 Source Han Sans (思源黑体) - 更可靠的下载源
+            font_url = "https://github.com/adobe-fonts/source-han-sans/raw/release/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf"
+            font_name = download_and_register_font(font_url, 'SourceHanSans')
 
             if font_name:
                 normal_font_name = font_name
@@ -94,26 +99,26 @@ def register_chinese_font():
         except Exception as e:
             print(f"[FAIL] Failed to download font: {e}")
 
-        # 3. 最后尝试使用reportlab内置的中文字体支持
-        print("[WARN] Attempting to use reportlab built-in font support...")
-
+        # 3. 尝试备用下载源（文泉驿）
         try:
-            # 某些reportlab版本内置了中文字体
-            pdfmetrics.registerFont(TTFont('STSong-Light', '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', 0))
-            normal_font_name = 'STSong-Light'
-            bold_font_name = 'STSong-Light'
-            fonts_registered = True
-            print("[OK] Using built-in font support")
-            return True
-        except:
-            pass
+            font_url = "https://github.com/googlefonts/noto-cjk/releases/download/Sans2.004/02_NotoSansCJK-OTC.zip"
+            font_name = download_and_register_font_from_zip(font_url)
+
+            if font_name:
+                normal_font_name = font_name
+                bold_font_name = font_name
+                fonts_registered = True
+                print(f"[OK] Successfully downloaded and registered font: {font_name}")
+                return True
+        except Exception as e:
+            print(f"[FAIL] Failed to download font from backup source: {e}")
 
         # 4. 如果所有方法都失败，使用默认字体并给出警告
         print("[WARN] WARNING: No Chinese font available!")
         print("PDF will use default fonts and may not display Chinese characters correctly.")
         print("To fix this issue, ensure Chinese fonts are installed on the server.")
         print("For Render deployment, add build command to install fonts:")
-        print("  Build Command: apt-get update && apt-get install -y fonts-wqy-microhei fonts-wqy-zenhei")
+        print("  Build Command: apt-get update && apt-get install -y fonts-noto-cjk fonts-wqy-microhei fonts-wqy-zenhei")
 
         normal_font_name = 'Helvetica'
         bold_font_name = 'Helvetica-Bold'
@@ -130,9 +135,33 @@ def register_chinese_font():
         return False
 
 
-def download_and_register_font(url):
+def download_and_register_font(url, font_name='DownloadedChinese'):
     """
-    下载并注册字体文件
+    下载并注册字体文件（OTF/TTF格式）
+    """
+    try:
+        # 创建临时目录
+        temp_dir = tempfile.mkdtemp()
+
+        # 下载字体文件
+        print(f"Downloading font from {url}...")
+        font_path = os.path.join(temp_dir, 'font.otf')
+        urllib.request.urlretrieve(url, font_path)
+
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont(font_name, font_path))
+            return font_name
+
+        return None
+
+    except Exception as e:
+        print(f"Failed to download font: {e}")
+        return None
+
+
+def download_and_register_font_from_zip(url):
+    """
+    从ZIP文件下载并注册字体
     """
     try:
         # 创建临时目录
@@ -152,9 +181,9 @@ def download_and_register_font(url):
         font_file = None
         for root, dirs, files in os.walk(temp_dir):
             for file in files:
-                if file.endswith('.ttf') or file.endswith('.ttc'):
+                if file.endswith('.ttf') or file.endswith('.ttc') or file.endswith('.otf'):
                     # 优先选择简体中文字体
-                    if 'SC' in file or 'Simplified' in file or 'CN' in file:
+                    if 'SC' in file or 'Simplified' in file or 'CN' in file or 'zh' in file.lower():
                         font_file = os.path.join(root, file)
                         break
                     elif not font_file:
@@ -168,7 +197,7 @@ def download_and_register_font(url):
         return None
 
     except Exception as e:
-        print(f"Failed to download font: {e}")
+        print(f"Failed to download font from zip: {e}")
         return None
 
 

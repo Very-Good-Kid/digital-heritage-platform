@@ -2,7 +2,7 @@ services:
   - type: web
     name: digital-heritage-platform
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: apt-get update && apt-get install -y fonts-noto-cjk fonts-wqy-microhei fonts-wqy-zenhei && pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
       - key: FLASK_ENV
