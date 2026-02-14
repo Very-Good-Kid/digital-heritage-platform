@@ -1310,35 +1310,6 @@ def initialize_application():
             traceback.print_exc()
             # 即使初始化失败，也标记为已初始化，避免重复尝试
             initialize_application.initialized = True
-    """初始化数据库"""
-    # 只在第一次请求时初始化
-    if not hasattr(initialize_database, 'initialized'):
-        try:
-            with app.app_context():
-                # 确保数据目录存在
-                db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-                db_dir = os.path.dirname(db_path)
-
-                if db_dir and not os.path.exists(db_dir):
-                    os.makedirs(db_dir, exist_ok=True)
-                    print(f"Created database directory: {db_dir}")
-
-                # 创建所有表
-                db.create_all()
-                print("Database tables created successfully")
-
-                # 初始化示例数据
-                initialize_sample_data()
-                print("Sample data initialized successfully")
-
-            initialize_database.initialized = True
-        except Exception as e:
-            print(f"Database initialization error: {e}")
-            import traceback
-            traceback.print_exc()
-            # 即使初始化失败，也标记为已初始化，避免重复尝试
-            initialize_database.initialized = True
-
 def initialize_sample_data():
     """初始化示例数据"""
     # 检查是否已有数据

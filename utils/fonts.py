@@ -93,13 +93,13 @@ def register_chinese_font():
         # 尝试多个可靠的下载源
         font_urls = [
             # 方案1: 使用 Google Fonts 官方 CDN (最可靠)
-            "https://fonts.gstatic.com/s/notosanssc/v36/k3kXo84MPvpLmixcA63oeALZTYKLgASIOQ.woff2",
+            "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansSC-Regular.otf",
 
             # 方案2: 使用 GitHub releases (备用)
-            "https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/09_NotoSansCJK-SC.zip",
+            "https://github.com/notofonts/noto-cjk/releases/download/Sans2.004R/09_NotoSansCJK-SC.zip",
 
             # 方案3: 使用 jsDelivr CDN (备用)
-            "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansSC-Regular.otf",
+            "https://github.com/notofonts/noto-cjk/releases/download/Sans2.004R/02_NotoSansCJK-SC.zip",
         ]
 
         for url in font_urls:

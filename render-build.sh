@@ -1,11 +1,14 @@
 #!/bin/bash
-# Render 构建脚本 - 免费版优化（不需要root权限）
+set -e  # 遇到错误立即退出
 
 echo "Starting build process..."
 
 # 只安装Python依赖
 echo "Installing Python dependencies..."
-pip install -r requirements.txt
+pip install -r requirements.txt || {
+    echo "Failed to install Python dependencies"
+    exit 1
+}
 
 echo "Build process completed successfully!"
 echo "Note: Chinese fonts will be installed at runtime"
