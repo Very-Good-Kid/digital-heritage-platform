@@ -32,6 +32,33 @@ if not os.path.exists(data_dir):
     except Exception as e:
         print(f"Warning: Could not create data directory {data_dir}: {e}")
 
+# 运行时字体安装（Render 免费版优化）
+def setup_fonts_on_startup():
+    """在应用启动时设置字体"""
+    try:
+        print("[INFO] Setting up fonts for PDF generation...")
+        import subprocess
+        import sys
+
+        # 运行字体安装脚本
+        script_path = os.path.join(os.path.dirname(__file__), 'install_fonts_runtime.py')
+        if os.path.exists(script_path):
+            result = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            print(result.stdout)
+            if result.stderr:
+                print("[WARN]", result.stderr)
+        else:
+            print("[WARN] Font installation script not found, skipping...")
+
+    except Exception as e:
+        print(f"[WARN] Font setup failed: {e}")
+        print("[INFO] Application will continue with default fonts")
+
 # 初始化CSRF保护
 csrf = CSRFProtect(app)
 
@@ -1248,9 +1275,41 @@ def about():
     return render_template('about.html')
 
 # 路由：后台管理
-# 初始化数据库和示例数据
+# 初始化字体和数据库
 @app.before_request
-def initialize_database():
+def initialize_application():
+    """初始化字体和数据库"""
+    # 只在第一次请求时初始化
+    if not hasattr(initialize_application, 'initialized'):
+        try:
+            # 1. 首先设置字体
+            setup_fonts_on_startup()
+
+            # 2. 然后初始化数据库
+            with app.app_context():
+                # 确保数据目录存在
+                db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+                db_dir = os.path.dirname(db_path)
+
+                if db_dir and not os.path.exists(db_dir):
+                    os.makedirs(db_dir, exist_ok=True)
+                    print(f"Created database directory: {db_dir}")
+
+                # 创建所有表
+                db.create_all()
+                print("Database tables created successfully")
+
+                # 初始化示例数据
+                initialize_sample_data()
+                print("Sample data initialized successfully")
+
+            initialize_application.initialized = True
+        except Exception as e:
+            print(f"Application initialization error: {e}")
+            import traceback
+            traceback.print_exc()
+            # 即使初始化失败，也标记为已初始化，避免重复尝试
+            initialize_application.initialized = True
     """初始化数据库"""
     # 只在第一次请求时初始化
     if not hasattr(initialize_database, 'initialized'):

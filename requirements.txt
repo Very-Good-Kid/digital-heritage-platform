@@ -17,6 +17,10 @@ cryptography>=41.0.0
 # PDF生成
 reportlab>=4.0.0
 
+# 字体处理
+fonttools>=4.40.0
+requests>=2.31.0
+
 # 图像处理（使用支持 Python 3.13 的版本）
 Pillow>=10.4.0
 
