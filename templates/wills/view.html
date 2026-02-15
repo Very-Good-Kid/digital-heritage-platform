@@ -25,8 +25,9 @@
                     </span>
                 </div>
                 <div class="card-body">
-                    <div class="mb-4">
-                        <h4 class="text-primary">{{ will.title }}</h4>
+                    <!-- 标题和日期 -->
+                    <div class="mb-4 text-center">
+                        <h3 class="text-primary">{{ will.title }}</h3>
                         <p class="text-muted">
                             <small>
                                 <i class="bi bi-calendar"></i> 创建时间：{{ will.created_at.strftime('%Y年%m月%d日 %H:%M') }}
@@ -37,57 +38,49 @@
                         </p>
                     </div>
 
-                    {% if will.description %}
-                    <div class="mb-4">
-                        <h5>总体意愿说明</h5>
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <p class="mb-0">{{ will.description }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
+                    <hr>
 
-                    {% if will.assets_data and will.assets_data.get('heir_info') %}
+                    <!-- 第一部分：数字资产类型与处理意愿 -->
                     <div class="mb-4">
-                        <h5>指定继承人信息</h5>
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <p class="mb-0">{{ will.assets_data['heir_info'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if will.assets_data %}
-                    <div class="mb-4">
-                        <h5>数字资产处理意愿</h5>
+                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                            <i class="bi bi-wallet2 me-2"></i>一、数字资产类型与处理意愿
+                        </h5>
+                        {% if will.assets_data %}
                         <div class="table-responsive">
                             <table class="table table-bordered">
                                 <thead class="table-light">
                                     <tr>
                                         <th>平台名称</th>
+                                        <th>资产类别</th>
                                         <th>账号</th>
+                                        <th>指定联系人/继承人</th>
                                         <th>处理方式</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% set asset_count = 0 %}
                                     {% for asset_id, asset_info in will.assets_data.items() %}
-                                        {% if asset_id != 'heir_info' and asset_id != 'special_notes' %}
+                                        {% if asset_id not in ['heir_info', 'special_notes', 'heir_name', 'heir_relation', 'heir_phone', 'heir_email', 'heir_notes', 'backup_name', 'backup_relation', 'backup_phone', 'backup_email', 'backup_notes'] %}
                                             {% set asset_count = asset_count + 1 %}
                                             <tr>
-                                                <td>{{ asset_info.platform_name }}</td>
-                                                <td>{{ asset_info.account }}</td>
+                                                <td>{{ asset_info.get('platform_name', '未知') }}</td>
                                                 <td>
-                                                    <span class="badge bg-info">{{ asset_info.action }}</span>
+                                                    {% set category = asset_info.get('category', '其他') %}
+                                                    <span class="badge bg-{% if category == '社交' %}primary{% elif category == '金融' %}success{% elif category == '记忆' %}info{% else %}warning{% endif %}">
+                                                        {{ category }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ asset_info.get('account', '未知') }}</td>
+                                                <td>{{ asset_info.get('heir', '-') }}</td>
+                                                <td>
+                                                    <span class="badge bg-info">{{ asset_info.get('action', '未指定') }}</span>
                                                 </td>
                                             </tr>
                                         {% endif %}
                                     {% endfor %}
                                     {% if asset_count == 0 %}
                                     <tr>
-                                        <td colspan="3" class="text-center text-muted">
+                                        <td colspan="5" class="text-center text-muted">
                                             未选择任何数字资产
                                         </td>
                                     </tr>
@@ -95,36 +88,176 @@
                                 </tbody>
                             </table>
                         </div>
+                        {% else %}
+                        <p class="text-muted">未选择任何数字资产</p>
+                        {% endif %}
                     </div>
-                    {% endif %}
 
-                    {% if will.assets_data and will.assets_data.get('special_notes') %}
+                    <!-- 第二部分：指定联系人/继承人详细信息 -->
                     <div class="mb-4">
-                        <h5>特别说明</h5>
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <p class="mb-0">{{ will.assets_data['special_notes'] }}</p>
+                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                            <i class="bi bi-person-lines-fill me-2"></i>二、指定联系人/继承人详细信息
+                        </h5>
+                        <div class="row">
+                            {% if will.assets_data %}
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th style="width: 120px;">姓名：</th>
+                                        <td>{{ will.assets_data.get('heir_name', '-') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>关系：</th>
+                                        <td>{{ will.assets_data.get('heir_relation', '-') }}</td>
+                                    </tr>
+                                </table>
                             </div>
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th style="width: 120px;">电话：</th>
+                                        <td>{{ will.assets_data.get('heir_phone', '-') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>邮箱：</th>
+                                        <td>{{ will.assets_data.get('heir_email', '-') }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            {% if will.assets_data.get('heir_notes') %}
+                            <div class="col-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <strong>特别说明：</strong>
+                                        <p class="mb-0">{{ will.assets_data['heir_notes'] }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="col-12">
+                                <p class="text-muted">未填写继承人信息</p>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
+
+                      <!-- 备用联系人信息 -->
+                      <div class="card mb-3">
+                          <div class="card-header bg-light">
+                              <strong>备用联系人</strong>
+                          </div>
+                          <div class="card-body">
+                              {% if will.assets_data and (will.assets_data.get('backup_name') or will.assets_data.get('backup_phone')) %}
+                              <div class="row">
+                                  <div class="col-md-6">
+                                      <table class="table table-sm mb-0">
+                                          <tr>
+                                              <th style="width: 100px;">姓名：</th>
+                                              <td>{{ will.assets_data.get('backup_name', '-') }}</td>
+                                          </tr>
+                                          <tr>
+                                              <th>关系：</th>
+                                              <td>{{ will.assets_data.get('backup_relation', '-') }}</td>
+                                          </tr>
+                                      </table>
+                                  </div>
+                                  <div class="col-md-6">
+                                      <table class="table table-sm mb-0">
+                                          <tr>
+                                              <th style="width: 100px;">电话：</th>
+                                              <td>{{ will.assets_data.get('backup_phone', '-') }}</td>
+                                          </tr>
+                                          <tr>
+                                              <th>邮箱：</th>
+                                              <td>{{ will.assets_data.get('backup_email', '-') }}</td>
+                                          </tr>
+                                      </table>
+                                  </div>
+                                  {% if will.assets_data.get('backup_notes') %}
+                                  <div class="col-12 mt-2">
+                                      <strong>特别说明：</strong>
+                                      <p class="mb-0 text-muted">{{ will.assets_data['backup_notes'] }}</p>
+                                  </div>
+                                  {% endif %}
+                              </div>
+                              {% else %}
+                              <p class="text-muted mb-0">未填写备用联系人信息</p>
+                              {% endif %}
+                          </div>
+                      </div>
+  
+                    <!-- 第三部分：附加声明 -->
+                    <div class="mb-4">
+                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                            <i class="bi bi-file-earmark-text me-2"></i>三、附加声明
+                        </h5>
+                        
+                        {% if will.description %}
+                        <div class="mb-3">
+                            <strong>总体意愿说明：</strong>
+                            <div class="card bg-light mt-2">
+                                <div class="card-body">
+                                    <p class="mb-0">{{ will.description }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if will.assets_data and will.assets_data.get('special_notes') %}
+                        <div class="mb-3">
+                            <strong>其他特别说明：</strong>
+                            <div class="card bg-light mt-2">
+                                <div class="card-body">
+                                    <p class="mb-0">{{ will.assets_data['special_notes'] }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- 风险评估提示 -->
+                        <div class="alert alert-warning">
+                            <h6><i class="bi bi-exclamation-triangle"></i> 风险评估提示</h6>
+                            <ul class="mb-0 small">
+                                <li><strong>社交媒体平台：</strong>部分平台支持"纪念账户"设置，但不支持账户密码移交；微信通常不支持账号过户，直系亲属可凭相关证明申请账号内财产处理或注销。</li>
+                                <li><strong>电子邮件与云存储：</strong>多数平台不允许继承，但可凭法律文件（如遗嘱、公证）注销账户，且可能永久删除长期未活跃账户。</li>
+                                <li><strong>数字货币与虚拟资产：</strong>私钥/助记词遗失将导致资产永久丢失；部分交易平台可能冻结未经验证的继承人申请。</li>
+                            </ul>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-lightbulb"></i> 重要建议</h6>
+                            <ul class="mb-0 small">
+                                <li>将账户信息、密码及私钥等托管于可信第三方或物理备份</li>
+                                <li>本声明将定期变更，以反映资产变化及平台政策变动</li>
+                                <li>如需法律效力，请咨询专业律师订立遗嘱或公证文件</li>
+                            </ul>
+                        </div>
+                    </div>
 
                     <hr>
 
+                    <!-- 确认声明 -->
+                    <div class="mb-4 p-4 bg-light border rounded">
+                        <p class="mb-3">
+                            <strong>本人确认，此文件仅为表达本人关于数字资产处置的个人意愿，并非一份具有法律强制效力的遗嘱或文件。本人知悉，数字资产的最终处置将受到各互联网平台政策、服务协议及相关法律法规的约束。</strong>
+                        </p>
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <p>声明人：________________________</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p>日期（年/月/日）：________________________</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 法律提示 -->
                     <div class="alert alert-warning">
                         <h6><i class="bi bi-exclamation-triangle"></i> 重要法律提示</h6>
                         <p class="mb-0">
                             本文件可作为您意愿的强烈表达，协助继承人沟通，但不替代正式公证遗嘱。
                             建议在制定此声明后，咨询专业律师，并考虑进行公证。
-                        </p>
-                    </div>
-
-                    <div class="alert alert-info">
-                        <h6><i class="bi bi-info-circle"></i> 平台政策参考</h6>
-                        <p class="mb-0">
-                            请注意，各数字平台对账户继承有不同的政策规定。在执行本声明时，
-                            建议继承人提前了解相关平台的具体政策，并准备必要的法律文件。
-                            <a href="{{ url_for('policies') }}" class="alert-link">查看平台政策矩阵</a>
                         </p>
                     </div>
 

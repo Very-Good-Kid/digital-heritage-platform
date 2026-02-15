@@ -165,7 +165,7 @@ def logout():
     """用户登出"""
     logout_user()
     flash('已成功登出', 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
 # 路由：用户仪表盘
 @app.route('/dashboard')
@@ -224,8 +224,15 @@ def assets():
         assets_query = assets_query.filter_by(user_id=current_user.id)
 
     assets = assets_query.order_by(DigitalAsset.created_at.desc()).all()
-    categories = ['社交', '金融', '记忆', '虚拟财产']
-    return render_template('assets/index.html', assets=assets, categories=categories)
+    
+    # 获取用户的遗嘱列表
+    wills_query = DigitalWill.query
+    if not current_user.is_admin:
+        wills_query = wills_query.filter_by(user_id=current_user.id)
+    wills = wills_query.order_by(DigitalWill.created_at.desc()).all()
+    
+    categories = ['社交媒体', '电子邮箱', '云存储与数字内容', '虚拟资产与数字货币', '其他数字资产']
+    return render_template('assets/index.html', assets=assets, categories=categories, wills=wills)
 
 @app.route('/assets/download-template/<format>')
 @login_required
@@ -278,11 +285,11 @@ def generate_excel_template():
 
         # 添加示例数据
         sample_data = [
-            ['微信', '13800138000', '', '社交', '主要社交账号'],
-            ['QQ', '123456789', '', '社交', '工作用QQ'],
-            ['支付宝', '13800138000', 'password123', '金融', '主要支付账户'],
-            ['百度网盘', 'user@example.com', 'pwd123', '记忆', '存储重要文件'],
-            ['王者荣耀', 'game_user', 'gamepass', '虚拟财产', '游戏账号']
+            ['微信', '13800138000', '', '社交媒体', '主要社交账号'],
+            ['QQ', '123456789', '', '社交媒体', '工作用QQ'],
+            ['支付宝', '13800138000', 'password123', '虚拟资产与数字货币', '主要支付账户'],
+            ['百度网盘', 'user@example.com', 'pwd123', '云存储与数字内容', '存储重要文件'],
+            ['王者荣耀', 'game_user', 'gamepass', '虚拟资产与数字货币', '游戏账号']
         ]
 
         for row_idx, row_data in enumerate(sample_data, start=2):
@@ -296,7 +303,7 @@ def generate_excel_template():
         ws.append(['1. 平台名称：填写数字资产所属平台（如微信、QQ、抖音等）'])
         ws.append(['2. 账号：填写您的账号信息（手机号、邮箱、用户名等）'])
         ws.append(['3. 密码：选填，密码将加密存储'])
-        ws.append(['4. 分类：选择资产分类（社交、金融、记忆、虚拟财产）'])
+        ws.append(['4. 分类：选择资产分类（社交媒体、电子邮箱、云存储与数字内容、虚拟资产与数字货币、其他数字资产）'])
         ws.append(['5. 备注：填写任何有用的补充信息'])
 
         # 保存到内存
@@ -380,11 +387,11 @@ def generate_pdf_template():
         # 表格
         table_data = [
             ['平台名称', '账号', '密码（可选）', '分类', '备注说明'],
-            ['微信', '13800138000', '', '社交', '主要社交账号'],
-            ['QQ', '123456789', '', '社交', '工作用QQ'],
-            ['支付宝', '13800138000', '', '金融', '主要支付账户'],
-            ['百度网盘', 'user@example.com', '', '记忆', '存储重要文件'],
-            ['王者荣耀', 'game_user', '', '虚拟财产', '游戏账号'],
+            ['微信', '13800138000', '', '社交媒体', '主要社交账号'],
+            ['QQ', '123456789', '', '社交媒体', '工作用QQ'],
+            ['支付宝', '13800138000', '', '虚拟资产与数字货币', '主要支付账户'],
+            ['百度网盘', 'user@example.com', '', '云存储与数字内容', '存储重要文件'],
+            ['王者荣耀', 'game_user', '', '虚拟资产与数字货币', '游戏账号'],
             ['', '', '', '', ''],
             ['', '', '', '', ''],
             ['', '', '', '', ''],
@@ -423,7 +430,7 @@ def generate_pdf_template():
             body_style
         ))
         story.append(Paragraph(
-            "<b>4. 分类：</b>选择资产分类（社交、金融、记忆、虚拟财产）",
+            "<b>4. 分类：</b>选择资产分类（社交媒体、电子邮箱、云存储与数字内容、虚拟资产与数字货币、其他数字资产）",
             body_style
         ))
         story.append(Paragraph(
@@ -495,7 +502,7 @@ def edit_asset(asset_id):
             db.session.rollback()
             flash('更新失败，请重试', 'error')
 
-    categories = ['社交', '金融', '记忆', '虚拟财产']
+    categories = ['社交媒体', '电子邮箱', '云存储与数字内容', '虚拟资产与数字货币', '其他数字资产']
     return render_template('assets/edit.html', asset=asset, categories=categories)
 
 @app.route('/assets/<int:asset_id>/delete', methods=['POST'])
@@ -545,18 +552,39 @@ def wills():
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
-        heir_info = request.form.get('heir_info', '')
         special_notes = request.form.get('special_notes', '')
         assets_data = request.form.get('assets_data', '{}')
+
+        # 新的继承人信息字段
+        heir_name = request.form.get('heir_name', '')
+        heir_relation = request.form.get('heir_relation', '')
+        heir_phone = request.form.get('heir_phone', '')
+        heir_email = request.form.get('heir_email', '')
+        heir_notes = request.form.get('heir_notes', '')
+
+        # 备用联系人信息
+        backup_name = request.form.get('backup_name', '')
+        backup_relation = request.form.get('backup_relation', '')
+        backup_phone = request.form.get('backup_phone', '')
+        backup_email = request.form.get('backup_email', '')
+        backup_notes = request.form.get('backup_notes', '')
 
         try:
             assets_data_json = __import__('json').loads(assets_data)
         except:
             assets_data_json = {}
 
-        # 将新字段合并到assets_data中
-        if heir_info:
-            assets_data_json['heir_info'] = heir_info
+        # 将继承人信息合并到assets_data中
+        if heir_name:
+            assets_data_json['heir_name'] = heir_name
+        if heir_relation:
+            assets_data_json['heir_relation'] = heir_relation
+        if heir_phone:
+            assets_data_json['heir_phone'] = heir_phone
+        if heir_email:
+            assets_data_json['heir_email'] = heir_email
+        if heir_notes:
+            assets_data_json['heir_notes'] = heir_notes
         if special_notes:
             assets_data_json['special_notes'] = special_notes
 
@@ -1087,6 +1115,19 @@ def policies():
     policies = PlatformPolicy.query.order_by(PlatformPolicy.platform_name).all()
     return render_template('policies/index.html', policies=policies)
 
+# 路由：身后继承（整合平台政策和继承导航）
+@app.route('/inheritance')
+def inheritance():
+    """身后继承 - 整合平台政策矩阵和继承导航"""
+    policies = PlatformPolicy.query.order_by(PlatformPolicy.platform_name).all()
+    platforms = PlatformPolicy.query.filter(PlatformPolicy.platform_name.in_(['微信', 'QQ', '抖音'])).all()
+    scenarios = [
+        {'id': 'scenario1', 'name': '有遗嘱+有密码', 'description': '您拥有合法的数字遗嘱和账户密码'},
+        {'id': 'scenario2', 'name': '有遗嘱+无密码', 'description': '您拥有合法的数字遗嘱但没有账户密码'},
+        {'id': 'scenario3', 'name': '无遗嘱+无密码', 'description': '您没有数字遗嘱和账户密码'}
+    ]
+    return render_template('inheritance/index.html', policies=policies, platforms=platforms, scenarios=scenarios)
+
 # 路由：继承导航
 @app.route('/inheritance-guide', methods=['GET', 'POST'])
 def inheritance_guide():
@@ -1267,6 +1308,18 @@ def faq():
     category_order = ['基础概念', '保护措施', '法律问题']
     categories = sorted(set(faq.category for faq in faqs), key=lambda x: category_order.index(x) if x in category_order else 999)
     return render_template('faq/index.html', faqs=faqs, categories=categories)
+
+# 路由：情感关怀（整合故事墙和公益普法问答）
+@app.route('/care')
+def care():
+    """情感关怀 - 整合故事墙和公益普法问答"""
+    # 获取故事
+    stories = Story.query.filter_by(status='approved').order_by(Story.created_at.desc()).all()
+    # 获取FAQ
+    faqs = FAQ.query.order_by(FAQ.category, FAQ.order).all()
+    category_order = ['基础概念', '保护措施', '法律问题']
+    faq_categories = sorted(set(faq.category for faq in faqs), key=lambda x: category_order.index(x) if x in category_order else 999)
+    return render_template('care/index.html', stories=stories, faqs=faqs, faq_categories=faq_categories)
 
 # 路由：关于我们
 @app.route('/about')

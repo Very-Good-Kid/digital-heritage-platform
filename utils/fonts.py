@@ -1,5 +1,5 @@
 """
-字体管理模块 - 修复版 V4 (针对 Render 免费版优化)
+字体管理模块 - 修复版 V5 (使用阿里妈妈东方大楷字体)
 处理 PDF 生成中的中文字体问题
 支持 Windows、Linux (Render)、macOS 等多个平台
 """
@@ -24,10 +24,30 @@ if sys.platform == 'win32':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 
+def get_app_font_path():
+    """获取应用内置字体路径"""
+    # 尝试多种方式获取字体路径
+    possible_paths = [
+        # 相对于当前文件
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'fonts', 'AlimamaDongFangDaKai-Regular.ttf'),
+        # 相对于工作目录
+        os.path.join(os.getcwd(), 'static', 'fonts', 'AlimamaDongFangDaKai-Regular.ttf'),
+        # Render部署路径
+        '/app/static/fonts/AlimamaDongFangDaKai-Regular.ttf',
+        '/opt/render/project/src/static/fonts/AlimamaDongFangDaKai-Regular.ttf',
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    return None
+
+
 def register_chinese_font():
     """
     注册中文字体
-    支持多个平台和字体源
+    优先使用阿里妈妈东方大楷字体
     """
     global fonts_registered, normal_font_name, bold_font_name
 
@@ -35,7 +55,20 @@ def register_chinese_font():
         return True
 
     try:
-        # 1. 尝试使用系统字体 - 按优先级排序
+        # 1. 优先使用应用内置的阿里妈妈东方大楷字体
+        app_font_path = get_app_font_path()
+        if app_font_path:
+            try:
+                pdfmetrics.registerFont(TTFont('AlimamaDongFangDaKai', app_font_path))
+                normal_font_name = 'AlimamaDongFangDaKai'
+                bold_font_name = 'AlimamaDongFangDaKai'  # 使用同一字体作为粗体
+                fonts_registered = True
+                print(f"[OK] Successfully registered app font: {app_font_path}")
+                return True
+            except Exception as e:
+                print(f"[FAIL] Failed to register app font: {e}")
+
+        # 2. 尝试使用系统字体 - 按优先级排序
         font_paths = [
             # Linux (Render) 优先使用文泉驿
             ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 'WQYMicroHei', 'WQYMicroHei-Bold', 0),
@@ -87,7 +120,7 @@ def register_chinese_font():
                 print(f"[FAIL] Failed to register font {font_info[0]}: {e}")
                 continue
 
-        # 2. 如果系统字体不可用，尝试下载开源中文字体
+        # 3. 如果系统字体不可用，尝试下载开源中文字体
         print("[WARN] No system Chinese font found, attempting to download open-source font...")
 
         # 尝试多个可靠的下载源
@@ -123,7 +156,7 @@ def register_chinese_font():
                 print(f"[FAIL] Failed to download from {url}: {e}")
                 continue
 
-        # 3. 如果所有方法都失败，使用默认字体并给出警告
+        # 4. 如果所有方法都失败，使用默认字体并给出警告
         print("[WARN] WARNING: No Chinese font available!")
         print("PDF will use default fonts and may not display Chinese characters correctly.")
         print("To fix this issue, ensure Chinese fonts are installed on the server.")

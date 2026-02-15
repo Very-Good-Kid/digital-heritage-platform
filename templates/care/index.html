@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}情感关怀 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>情感关怀</h2>
+            <p class="text-muted">分享故事、获取支持，我们陪伴您走过每一段旅程</p>
+        </div>
+    </div>
+
+    <!-- 选项卡导航 -->
+    <ul class="nav nav-tabs mb-4" id="careTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="stories-tab" data-bs-toggle="tab" data-bs-target="#stories" 
+                    type="button" role="tab" aria-controls="stories" aria-selected="true">
+                <i class="bi bi-heart me-2"></i>故事墙
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="faq-tab" data-bs-toggle="tab" data-bs-target="#faq" 
+                    type="button" role="tab" aria-controls="faq" aria-selected="false">
+                <i class="bi bi-question-circle me-2"></i>公益普法问答
+            </button>
+        </li>
+    </ul>
+
+    <!-- 选项卡内容 -->
+    <div class="tab-content" id="careTabContent">
+        <!-- 故事墙 -->
+        <div class="tab-pane fade show active" id="stories" role="tabpanel" aria-labelledby="stories-tab">
+            <!-- 故事分类 -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="btn-group" role="group" id="storyFilters">
+                          <button type="button" class="btn btn-outline-primary active" data-filter="all">全部</button>
+                          <button type="button" class="btn btn-outline-primary" data-filter="个人分享">个人分享</button>
+                          <button type="button" class="btn btn-outline-primary" data-filter="官方发布">官方发布</button>
+                      </div>
+                </div>
+            </div>
+
+            <div class="row" id="storiesContainer">
+                {% for story in stories %}
+                <div class="col-md-6 mb-4 story-card" data-category="{{ story.category }}">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <span class="badge bg-{% if story.category == '个人分享' %}primary{% else %}success{% endif %}">
+                                    {{ story.category }}
+                                </span>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar"></i> {{ story.created_at.strftime('%Y-%m-%d') }}
+                                </small>
+                            </div>
+
+                            <h5 class="card-title">{{ story.title }}</h5>
+
+                            <p class="card-text">{{ story.content[:150] }}{% if story.content|length > 150 %}...{% endif %}</p>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-person"></i> {{ story.author }}
+                                </small>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showStoryDetail({{ story.id }})">
+                                    阅读更多 <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 分享故事 -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h5><i class="bi bi-pen"></i> 分享您的故事</h5>
+                            <p class="text-muted">您有关于数字遗产的故事想要分享吗？我们欢迎您的投稿</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#shareStoryModal">
+                                <i class="bi bi-plus-circle"></i> 分享我的故事
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 公益普法问答 -->
+        <div class="tab-pane fade" id="faq" role="tabpanel" aria-labelledby="faq-tab">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card sticky-top" style="top: 80px;">
+                        <div class="card-header">
+                            <h6>问题分类</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist">
+                                {% for category in faq_categories %}
+                                <button class="nav-link {% if loop.first %}active{% endif %}"
+                                        id="v-pills-{{ category }}-tab"
+                                        data-bs-toggle="pill"
+                                        data-bs-target="#v-pills-{{ category }}"
+                                        type="button"
+                                        role="tab">
+                                    {{ category }}
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-9">
+                    <div class="tab-content" id="v-pills-tabContent">
+                        {% for category in faq_categories %}
+                        <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+                             id="v-pills-{{ category }}"
+                             role="tabpanel">
+                            <div class="accordion" id="accordion-{{ category }}">
+                                {% for faq in faqs %}
+                                    {% if faq.category == category %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading{{ faq.id }}">
+                                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#collapse{{ faq.id }}">
+                                            {{ faq.question }}
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ faq.id }}"
+                                         class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                                         data-bs-parent="#accordion-{{ category }}">
+                                        <div class="accordion-body">
+                                            {{ faq.answer }}
+                                        </div>
+                                    </div>
+                                </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 联系我们 -->
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h5><i class="bi bi-chat-dots"></i> 没有找到您的问题？</h5>
+                            <p class="text-muted">如果您有其他疑问，欢迎联系我们</p>
+                            <div class="d-flex justify-content-center gap-3">
+                                <a href="mailto:contact@digitalheritage.com" class="btn btn-primary">
+                                    <i class="bi bi-envelope"></i> 发送邮件
+                                </a>
+                                <a href="tel:400-888-8888" class="btn btn-success">
+                                    <i class="bi bi-telephone"></i> 电话咨询
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 分享故事模态框 -->
+<div class="modal fade" id="shareStoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">分享您的故事</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="shareStoryForm">
+                    <div class="mb-3">
+                        <label for="storyTitle" class="form-label">故事标题</label>
+                        <input type="text" class="form-control" id="storyTitle" name="title" placeholder="给您的故事起个标题" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="storyCategory" class="form-label">故事分类</label>
+                        <select class="form-select" id="storyCategory" name="category" required>
+                              <option value="个人分享">个人分享</option>
+                              <option value="官方发布">官方发布</option>
+                          </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="storyContent" class="form-label">故事内容</label>
+                        <textarea class="form-control" id="storyContent" name="content" rows="6"
+                                  placeholder="分享您的数字遗产故事..." required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="storyAuthor" class="form-label">作者名称</label>
+                        <input type="text" class="form-control" id="storyAuthor" name="author" placeholder="您的名称或昵称" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitStory()">提交故事</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 故事详情模态框 -->
+<div class="modal fade" id="storyDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="storyDetailTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="storyDetailContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 故事分类过滤
+document.querySelectorAll('#storyFilters button').forEach(button => {
+    button.addEventListener('click', function() {
+        document.querySelectorAll('#storyFilters button').forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+
+        const filter = this.getAttribute('data-filter');
+        const cards = document.querySelectorAll('.story-card');
+
+        cards.forEach(card => {
+            const category = card.getAttribute('data-category');
+            if (filter === 'all' || category === filter) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+});
+
+// 显示故事详情
+function showStoryDetail(storyId) {
+    const stories = [
+        {% for story in stories %}
+        {
+            id: {{ story.id }},
+            title: "{{ story.title }}",
+            content: "{{ story.content }}",
+            author: "{{ story.author }}",
+            category: "{{ story.category }}",
+            created_at: "{{ story.created_at.strftime('%Y-%m-%d') }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const story = stories.find(s => s.id === storyId);
+    if (story) {
+        document.getElementById('storyDetailTitle').textContent = story.title;
+        document.getElementById('storyDetailContent').innerHTML = `
+            <div class="mb-3">
+                <span class="badge bg-${story.category === '个人分享' ? 'primary' : 'success'}">
+                    ${story.category}
+                </span>
+                <small class="text-muted ms-2">
+                    <i class="bi bi-calendar"></i> ${story.created_at}
+                </small>
+                <small class="text-muted ms-2">
+                    <i class="bi bi-person"></i> ${story.author}
+                </small>
+            </div>
+            <div class="story-content" style="line-height: 1.8;">
+                ${story.content.replace(/\n/g, '<br>')}
+            </div>
+        `;
+        const modal = new bootstrap.Modal(document.getElementById('storyDetailModal'));
+        modal.show();
+    }
+}
+
+// 提交故事
+async function submitStory() {
+    const form = document.getElementById('shareStoryForm');
+    const title = document.getElementById('storyTitle').value;
+    const category = document.getElementById('storyCategory').value;
+    const content = document.getElementById('storyContent').value;
+    const author = document.getElementById('storyAuthor').value;
+
+    if (!title || !content || !author) {
+        alert('请填写所有必填字段');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('category', category);
+        formData.append('content', content);
+        formData.append('author', author);
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        const response = await fetch('/stories/submit', {
+            method: 'POST',
+            headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
+            body: formData
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`服务器返回了非JSON响应 (${response.status})`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('shareStoryModal'));
+            modal.hide();
+            form.reset();
+        } else {
+            alert(result.message || '提交失败');
+        }
+    } catch (error) {
+        console.error('提交故事失败:', error);
+        if (error.message && error.message.includes('登录')) {
+            alert('请先登录后再提交故事');
+            window.location.href = '/login?next=/care';
+        } else {
+            alert('提交失败，请稍后重试');
+        }
+    }
+}
+</script>
+{% endblock %}

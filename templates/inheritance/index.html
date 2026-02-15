@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}身后继承 - 数字遗产继承平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-box-seam"></i> 身后继承</h2>
+            <p class="text-muted">了解各大平台继承政策，获取专属继承指引</p>
+        </div>
+    </div>
+
+    <!-- 选项卡导航 -->
+    <ul class="nav nav-tabs mb-4" id="inheritanceTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="policy-tab" data-bs-toggle="tab" data-bs-target="#policy" 
+                    type="button" role="tab" aria-controls="policy" aria-selected="true">
+                <i class="bi bi-building me-2"></i>平台政策矩阵
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="guide-tab" data-bs-toggle="tab" data-bs-target="#guide" 
+                    type="button" role="tab" aria-controls="guide" aria-selected="false">
+                <i class="bi bi-compass me-2"></i>继承导航
+            </button>
+        </li>
+    </ul>
+
+    <!-- 选项卡内容 -->
+    <div class="tab-content" id="inheritanceTabContent">
+        <!-- 平台政策矩阵 -->
+        <div class="tab-pane fade show active" id="policy" role="tabpanel" aria-labelledby="policy-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-table"></i> 主流平台继承政策对比</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #ffffff !important;">
+                                    <th scope="col" style="width: 15%; color: #ffffff !important; font-weight: 700; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-building me-2"></i>平台名称
+                                    </th>
+                                    <th scope="col" style="width: 30%; color: #ffffff !important; font-weight: 700; padding: 1rem; border: none; background: transparent !important;">
+                                        <i class="bi bi-file-text me-2"></i>政策内容
+                                    </th>
+                                    <th scope="col" style="width: 15%; color: #ffffff !important; font-weight: 700; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-emoji-neutral me-2"></i>平台态度
+                                    </th>
+                                    <th scope="col" style="width: 15%; color: #ffffff !important; font-weight: 700; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-graph-up me-2"></i>继承可能性
+                                    </th>
+                                    <th scope="col" style="width: 25%; color: #ffffff !important; font-weight: 700; padding: 1rem; text-align: center; border: none; background: transparent !important;">
+                                        <i class="bi bi-telephone me-2"></i>客服联系方式
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for policy in policies %}
+                                <tr style="transition: all 0.3s ease; background-color: {% if loop.index % 2 == 0 %}#f8f9fa{% else %}white{% endif %};">
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div class="badge rounded-circle me-2" style="
+                                                width: 45px; 
+                                                height: 45px; 
+                                                display: flex; 
+                                                align-items: center; 
+                                                justify-content: center; 
+                                                font-weight: bold; 
+                                                font-size: 1.1em;
+                                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                                color: white;
+                                                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                                                {{ policy.platform_name[0] }}
+                                            </div>
+                                            <div>
+                                                <strong style="font-size: 1.15em; color: #333;">{{ policy.platform_name }}</strong>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="vertical-align: middle; color: #495057; padding: 1rem; font-size: 0.95em;">
+                                        {{ policy.policy_content }}
+                                    </td>
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div style="text-align: center;">
+                                            <span class="badge rounded-pill px-4 py-2" style="
+                                                {% if policy.attitude == '明确禁止' %}
+                                                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                                                    color: white;
+                                                {% elif policy.attitude == '态度模糊' %}
+                                                    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+                                                    color: #212529;
+                                                {% elif policy.attitude == '有限支持' %}
+                                                    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+                                                    color: white;
+                                                {% else %}
+                                                    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+                                                    color: white;
+                                                {% endif %}
+                                                font-weight: 600; font-size: 0.95em;">
+                                                {{ policy.attitude }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div style="text-align: center;">
+                                            <span class="badge rounded-pill px-4 py-2" style="
+                                                {% if policy.inherit_possibility == '低' %}
+                                                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                                                    color: white;
+                                                {% elif policy.inherit_possibility == '中' %}
+                                                    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+                                                    color: #212529;
+                                                {% else %}
+                                                    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+                                                    color: white;
+                                                {% endif %}
+                                                font-weight: 600; font-size: 0.95em;">
+                                                {{ policy.inherit_possibility }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td style="vertical-align: middle; padding: 1rem;">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div style="
+                                                background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+                                                color: white;
+                                                width: 40px;
+                                                height: 40px;
+                                                border-radius: 50%;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                                margin-right: 10px;">
+                                                <i class="bi bi-telephone-fill" style="font-size: 1.2em;"></i>
+                                            </div>
+                                            <span style="font-weight: 600; color: #333; font-size: 1em;">{{ policy.customer_service }}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 详细政策信息 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-file-text"></i> 详细政策信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="policyAccordion">
+                        {% for policy in policies %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ policy.id }}">
+                                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapse{{ policy.id }}">
+                                    <strong>{{ policy.platform_name }}</strong>
+                                    <span class="ms-3">
+                                        <span class="badge bg-{% if policy.attitude == '明确禁止' %}danger{% elif policy.attitude == '态度模糊' %}warning{% elif policy.attitude == '有限支持' %}info{% else %}success{% endif %}">
+                                            {{ policy.attitude }}
+                                        </span>
+                                        <span class="badge bg-{% if policy.inherit_possibility == '低' %}danger{% elif policy.inherit_possibility == '中' %}warning{% else %}success{% endif %}">
+                                            继承可能性：{{ policy.inherit_possibility }}
+                                        </span>
+                                    </span>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ policy.id }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                                 data-bs-parent="#policyAccordion">
+                                <div class="accordion-body">
+                                    <h6>政策内容</h6>
+                                    <p>{{ policy.policy_content }}</p>
+
+                                    <h6>法律依据</h6>
+                                    <p class="text-muted">{{ policy.legal_basis }}</p>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>客服联系方式</h6>
+                                            <p>
+                                                <i class="bi bi-telephone"></i> {{ policy.customer_service }}
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>风险提示</h6>
+                                            <p class="text-danger">{{ policy.risk_warning }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('guide-tab').click();">
+                                            <i class="bi bi-compass"></i> 查看{{ policy.platform_name }}继承导航
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 政策说明 -->
+            <div class="alert alert-info mt-4">
+                <h6><i class="bi bi-info-circle"></i> 政策说明</h6>
+                <ul class="mb-0">
+                    <li><strong>明确禁止：</strong>平台明确表示不支持账户继承，账户将永久冻结或删除。</li>
+                    <li><strong>态度模糊：</strong>平台政策不明确，需要具体情况具体分析。</li>
+                    <li><strong>有限支持：</strong>平台在特定条件下支持账户继承，需要提供完整法律文件。</li>
+                    <li><strong>主动服务：</strong>平台提供账户继承的专门服务和流程。</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 继承导航 -->
+        <div class="tab-pane fade" id="guide" role="tabpanel" aria-labelledby="guide-tab">
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-sliders"></i> 选择您的继承情景</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('inheritance_guide') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">第一步：选择目标平台</label>
+                                    <div class="row">
+                                        {% for platform in platforms %}
+                                        <div class="col-md-4 mb-3">
+                                            <div class="form-check card">
+                                                <div class="card-body">
+                                                    <input class="form-check-input" type="radio" name="platform"
+                                                           id="platform{{ platform.id }}" value="{{ platform.platform_name }}" required>
+                                                    <label class="form-check-label" for="platform{{ platform.id }}">
+                                                        <h6>{{ platform.platform_name }}</h6>
+                                                        <small class="text-muted">
+                                                            继承可能性：
+                                                            <span class="badge bg-{% if platform.inherit_possibility == '低' %}danger{% elif platform.inherit_possibility == '中' %}warning{% else %}success{% endif %}">
+                                                                {{ platform.inherit_possibility }}
+                                                            </span>
+                                                        </small>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">第二步：选择您的继承情景</label>
+                                    <div class="row">
+                                        {% for scenario in scenarios %}
+                                        <div class="col-md-4 mb-3">
+                                            <div class="form-check card">
+                                                <div class="card-body">
+                                                    <input class="form-check-input" type="radio" name="scenario"
+                                                           id="{{ scenario.id }}" value="{{ scenario.id }}" required>
+                                                    <label class="form-check-label" for="{{ scenario.id }}">
+                                                        <h6>{{ scenario.name }}</h6>
+                                                        <small class="text-muted">{{ scenario.description }}</small>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-play-circle"></i> 生成专属继承路径
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 情景说明 -->
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-question-circle"></i> 什么是"有遗嘱+有密码"？</h6>
+                                    <p class="text-muted small mb-0">
+                                        您拥有逝者的合法数字遗嘱，并且知道相应账户的登录密码。
+                                        这是最理想的继承情景，成功率最高。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-question-circle"></i> 什么是"有遗嘱+无密码"？</h6>
+                                    <p class="text-muted small mb-0">
+                                        您拥有逝者的合法数字遗嘱，但不知道账户的登录密码。
+                                        需要通过平台客服申请账户恢复或转移。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-question-circle"></i> 什么是"无遗嘱+无密码"？</h6>
+                                    <p class="text-muted small mb-0">
+                                        您既没有数字遗嘱，也不知道账户密码。
+                                        这是最困难的情景，通常需要通过法律途径解决。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-lightbulb"></i> 建议</h6>
+                                    <p class="text-muted small mb-0">
+                                        建议在生前创建数字遗嘱，妥善保管账户密码，
+                                        并告知家人重要账户信息，以避免继承困难。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

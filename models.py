@@ -57,7 +57,7 @@ class DigitalAsset(db.Model):
     platform_name = db.Column(db.String(100), nullable=False)
     account = db.Column(db.String(200), nullable=False)
     encrypted_password = db.Column(db.Text)
-    category = db.Column(db.String(50), nullable=False)  # 社交、金融、记忆、虚拟财产
+    category = db.Column(db.String(50), nullable=False)  # 社交媒体、电子邮箱、云存储与数字内容、虚拟资产与数字货币、其他数字资产
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=get_china_time)
     updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)

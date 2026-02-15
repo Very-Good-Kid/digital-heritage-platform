@@ -345,16 +345,13 @@
                         <a class="nav-link" href="{{ url_for('index') }}">首页</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('policies') }}">平台政策</a>
+                        <a class="nav-link" href="{{ url_for('assets') }}">生前规划</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('inheritance_guide') }}">继承导航</a>
+                        <a class="nav-link" href="{{ url_for('inheritance') }}">身后继承</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('stories') }}">故事墙</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('faq') }}">常见问题</a>
+                        <a class="nav-link" href="{{ url_for('care') }}">情感关怀</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('about') }}">关于我们</a>
@@ -365,11 +362,7 @@
                             <i class="bi bi-person-circle"></i> {{ current_user.username }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ url_for('dashboard') }}">仪表盘</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('assets') }}">资产清单</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('wills') }}">数字遗嘱</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">退出登录</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>退出登录</a></li>
                         </ul>
                     </li>
                     {% else %}
@@ -413,9 +406,9 @@
                 <div class="col-md-4">
                     <h5>快速链接</h5>
                     <ul class="list-unstyled">
-                        <li><a href="{{ url_for('policies') }}">平台政策矩阵</a></li>
-                        <li><a href="{{ url_for('inheritance_guide') }}">继承导航</a></li>
-                        <li><a href="{{ url_for('faq') }}">常见问题</a></li>
+                        <li><a href="{{ url_for('inheritance') }}">身后继承</a></li>
+                        <li><a href="{{ url_for('faq') }}">公益普法问答</a></li>
+                        <li><a href="{{ url_for('about') }}">关于我们</a></li>
                     </ul>
                 </div>
                 <div class="col-md-4">
