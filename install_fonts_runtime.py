@@ -60,8 +60,8 @@ def download_font_to_temp():
         font_dir.mkdir(exist_ok=True)
 
         # 使用 Google Fonts 的可靠 CDN
-        font_url = "https://fonts.gstatic.com/s/notosanssc/v36/k3kXo84MPvpLmixcA63oeALZTYKLgASIOQ.woff2"
-        font_path = font_dir / 'NotoSansSC.woff2'
+        font_url = "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansSC-Regular.otf"
+        font_path = font_dir / 'NotoSansSC.otf'
 
         # 如果文件已存在且大小合理，直接使用
         if font_path.exists() and font_path.stat().st_size > 100000:
