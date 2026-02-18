@@ -35,8 +35,12 @@ class ProductionConfig(Config):
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
-        # 添加连接池参数以提高性能
-        DATABASE_URL += '?pool_pre_ping=True&pool_size=5&max_overflow=10'
+        # 添加SSL和连接池参数以提高性能和稳定性
+        # Neon数据库需要SSL连接
+        if '?' in DATABASE_URL:
+            DATABASE_URL += '&sslmode=require&pool_pre_ping=True&pool_size=5&max_overflow=10&pool_recycle=3600'
+        else:
+            DATABASE_URL += '?sslmode=require&pool_pre_ping=True&pool_size=5&max_overflow=10&pool_recycle=3600'
 
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
         print(f"✅ 使用外部PostgreSQL数据库: {DATABASE_URL.split('@')[0]}@...")

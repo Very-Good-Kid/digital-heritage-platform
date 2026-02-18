@@ -81,6 +81,25 @@ os.makedirs('temp_pdfs', exist_ok=True)
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# 数据库连接健康检查中间件
+@app.before_request
+def check_db_connection():
+    """在每个请求前检查数据库连接"""
+    try:
+        # 执行一个简单的查询来检查连接
+        db.session.execute(db.text('SELECT 1'))
+    except Exception as e:
+        # 如果连接失败,尝试重连
+        print(f"[WARN] Database connection lost, attempting to reconnect: {e}")
+        try:
+            db.session.remove()
+            db.session.execute(db.text('SELECT 1'))
+            print("[INFO] Database reconnection successful")
+        except Exception as e2:
+            print(f"[ERROR] Database reconnection failed: {e2}")
+            # 如果重连失败,返回错误页面
+            return "数据库连接失败,请稍后重试", 503
+
 # 路由：首页
 @app.route('/')
 def index():
