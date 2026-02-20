@@ -1,175 +1,247 @@
 {% extends "base.html" %}
 
-{% block title %}数字遗嘱 - 数字遗产继承平台{% endblock %}
+{% block title %}数字资产继承意愿声明书 - 数字遗产继承平台{% endblock %}
 
 {% block content %}
 <div class="container py-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h2><i class="bi bi-file-text"></i> 数字遗嘱意愿声明</h2>
-            <p class="text-muted">创建您的数字遗产意愿声明，表达对数字资产的处置意愿</p>
-        </div>
-    </div>
-
-    <!-- 风险评估提示 -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="alert alert-warning">
-                <h6><i class="bi bi-exclamation-triangle"></i> 风险评估提示</h6>
-                <ul class="mb-0">
-                    <li><strong>社交媒体平台：</strong>部分平台支持"纪念账户"设置，但不支持账户密码移交；微信通常不支持账号过户，直系亲属可凭相关证明申请账号内财产处理或注销。</li>
-                    <li><strong>电子邮件与云存储：</strong>多数平台不允许继承，但可凭法律文件（如遗嘱、公证）注销账户，且可能永久删除长期未活跃账户。</li>
-                    <li><strong>数字货币与虚拟资产：</strong>私钥/助记词遗失将导致资产永久丢失；部分交易平台可能冻结未经验证的继承人申请。</li>
-                </ul>
-            </div>
-            <div class="alert alert-info">
-                <h6><i class="bi bi-lightbulb"></i> 重要建议</h6>
-                <ul class="mb-0">
-                    <li>将账户信息、密码及私钥等托管于可信第三方或物理备份</li>
-                    <li>本声明将定期变更，以反映资产变化及平台政策变动</li>
-                    <li>如需法律效力，请咨询专业律师订立遗嘱或公证文件</li>
-                </ul>
-            </div>
+            <h2><i class="bi bi-file-text"></i> 数字资产继承意愿声明书</h2>
+            <p class="text-muted">创建您的数字资产继承意愿声明书，表达对数字资产的处置意愿</p>
         </div>
     </div>
 
     <div class="row">
-        <!-- 创建遗嘱表单 -->
-        <div class="col-lg-6 mb-4">
+        <!-- 创建声明书表单 -->
+        <div class="col-lg-8 mb-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5><i class="bi bi-file-plus"></i> 创建数字遗嘱意愿声明</h5>
+                    <h5><i class="bi bi-file-plus"></i> 创建数字资产继承意愿声明书</h5>
                     <span class="badge bg-secondary">结构化表单</span>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('wills') }}" id="willForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
-                        <!-- 第一部分：数字资产类型与处理意愿 -->
-                        <div class="mb-4">
+                        <!-- 模块一：声明人基础信息栏（必填） -->
+                        <div class="mb-4 p-3 bg-light border rounded">
                             <h6 class="text-primary border-bottom pb-2 mb-3">
-                                <i class="bi bi-wallet2 me-2"></i>一、数字资产类型与处理意愿
+                                <i class="bi bi-person-badge me-2"></i>声明人基础信息栏
                             </h6>
-                            <small class="text-muted d-block mb-2">选择要处理的数字资产，并指定处理方式</small>
-                            
-                            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-                                <table class="table table-sm table-bordered">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="width: 40px;">选择</th>
-                                            <th>平台名称</th>
-                                            <th>资产类别</th>
-                                            <th>账号</th>
-                                            <th style="width: 120px;">指定联系人/继承人</th>
-                                            <th style="width: 130px;">处理方式</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% if assets %}
-                                            {% for asset in assets %}
-                                            <tr>
-                                                <td>
-                                                    <input type="checkbox" class="form-check-input asset-checkbox"
-                                                           data-asset-id="{{ asset.id }}"
-                                                           data-platform="{{ asset.platform_name }}"
-                                                           data-category="{{ asset.category }}"
-                                                           data-account="{{ asset.account }}"
-                                                           onchange="toggleAssetAction(this)">
-                                                </td>
-                                                <td>{{ asset.platform_name }}</td>
-                                                <td>
-                                                    <span class="badge bg-{% if asset.category == '社交' %}primary{% elif asset.category == '金融' %}success{% elif asset.category == '记忆' %}info{% else %}warning{% endif %}">
-                                                        {{ asset.category }}
-                                                    </span>
-                                                </td>
-                                                <td>{{ asset.account }}</td>
-                                                <td>
-                                                    <input type="text" class="form-control form-control-sm heir-input"
-                                                           data-asset-id="{{ asset.id }}"
-                                                           placeholder="姓名" disabled>
-                                                </td>
-                                                <td>
-                                                    <select class="form-select form-select-sm asset-action"
-                                                            data-asset-id="{{ asset.id }}" disabled>
-                                                        <option value="">选择</option>
-                                                        <option value="指定继承人">指定继承人</option>
-                                                        <option value="转为纪念模式">转为纪念模式</option>
-                                                        <option value="委托删除">委托删除</option>
-                                                        <option value="其他处理方式">其他</option>
-                                                    </select>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        {% else %}
-                                            <tr>
-                                                <td colspan="6" class="text-center text-muted py-3">
-                                                    暂无数字资产，请先<a href="{{ url_for('assets') }}">添加资产</a>
-                                                </td>
-                                            </tr>
-                                        {% endif %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- 第二部分：指定联系人/继承人详细信息 -->
-                        <div class="mb-4">
-                            <h6 class="text-primary border-bottom pb-2 mb-3">
-                                <i class="bi bi-person-lines-fill me-2"></i>二、指定联系人/继承人详细信息
-                            </h6>
-                            <small class="text-muted d-block mb-2">填写继承人的详细联系信息</small>
-                            
-                            <div class="row g-2">
-                                <div class="col-md-6">
-                                    <label for="heir_name" class="form-label">姓名 *</label>
-                                    <input type="text" class="form-control" id="heir_name" name="heir_name" required
-                                           placeholder="继承人姓名">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="declarant_name" class="form-label">声明人姓名 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="declarant_name" name="declarant_name" required
+                                           placeholder="请输入姓名">
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="heir_relation" class="form-label">与声明人关系 *</label>
-                                    <input type="text" class="form-control" id="heir_relation" name="heir_relation" required
-                                           placeholder="如：配偶、子女、父母等">
+                                <div class="col-md-4">
+                                    <label for="declarant_id" class="form-label">身份证号 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="declarant_id" name="declarant_id" required
+                                           placeholder="请输入身份证号" maxlength="18">
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="heir_phone" class="form-label">联系电话 *</label>
-                                    <input type="tel" class="form-control" id="heir_phone" name="heir_phone" required
-                                           placeholder="手机号码">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="heir_email" class="form-label">电子邮箱</label>
-                                    <input type="email" class="form-control" id="heir_email" name="heir_email"
-                                           placeholder="邮箱地址">
-                                </div>
-                                <div class="col-12">
-                                    <label for="heir_notes" class="form-label">特别说明</label>
-                                    <textarea class="form-control" id="heir_notes" name="heir_notes" rows="2"
-                                              placeholder="如访问权限、资产分配比例等特别说明..."></textarea>
+                                <div class="col-md-4">
+                                    <label for="declarant_nation" class="form-label">民族 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="declarant_nation" name="declarant_nation" required
+                                           placeholder="如：汉族">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 第三部分：附加声明 -->
+                        <!-- 核心生效前提 -->
+                        <div class="mb-4">
+                            <div class="alert alert-info mb-0">
+                                <p class="mb-0">
+                                    <strong>核心生效前提：</strong>本声明书在声明人身故或丧失自主行为能力后生效，指定联系人按本声明处置数字资产。法律依据：《中华人民共和国民法典》及对应平台用户协议。
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 模块二：数字资产类型与处置意愿 -->
                         <div class="mb-4">
                             <h6 class="text-primary border-bottom pb-2 mb-3">
-                                <i class="bi bi-file-earmark-text me-2"></i>三、附加声明
+                                <i class="bi bi-wallet2 me-2"></i>数字资产类型与处置意愿
                             </h6>
-                            
-                            <div class="mb-3">
-                                <label for="title" class="form-label">遗嘱标题 *</label>
-                                <input type="text" class="form-control" id="title" name="title" required
-                                       placeholder="例如：我的数字遗产处理意愿">
+                            <small class="text-muted d-block mb-3">请为每类资产勾选处置意愿</small>
+
+                            <!-- 社交媒体类 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    <strong>一、社交媒体（微信、QQ等）</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>处置意愿：</strong></label>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="social_action" value="设为纪念账户" id="social_memorial">
+                                                    <label class="form-check-label" for="social_memorial">设为纪念账户</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="social_action" value="注销账户" id="social_cancel">
+                                                    <label class="form-check-label" for="social_cancel">注销账户</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="social_action" value="移交内容给继承人" id="social_transfer">
+                                                    <label class="form-check-label" for="social_transfer">移交内容给继承人</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="social_action" value="其他" id="social_other">
+                                                    <label class="form-check-label" for="social_other">其他（自定义填写）：</label>
+                                                    <input type="text" class="form-control form-control-sm mt-1" name="social_other_text" placeholder="请说明">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="description" class="form-label">总体意愿说明 *</label>
-                                <textarea class="form-control" id="description" name="description" rows="3" required
-                                          placeholder="本人（声明人）就持有的数字资产，在本人丧失管理能力或离世后，作出如下意愿声明..."></textarea>
+                            <!-- 电子邮箱与云存储类 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <strong>二、电子邮箱与云存储（iCloud、网盘等）</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>处置意愿：</strong></label>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="cloud_action" value="允许继承人访问" id="cloud_access">
+                                                    <label class="form-check-label" for="cloud_access">允许继承人访问</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="cloud_action" value="永久删除/关闭" id="cloud_delete">
+                                                    <label class="form-check-label" for="cloud_delete">永久删除/关闭</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="cloud_action" value="其他" id="cloud_other">
+                                                    <label class="form-check-label" for="cloud_other">其他（自定义填写）：</label>
+                                                    <input type="text" class="form-control form-control-sm mt-1" name="cloud_other_text" placeholder="请说明">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="special_notes" class="form-label">其他特别说明</label>
-                                <textarea class="form-control" id="special_notes" name="special_notes" rows="2"
-                                          placeholder="其他需要特别说明的事项..."></textarea>
+                            <!-- 数字货币与金融App类 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-warning">
+                                    <strong>三、数字货币与金融App（比特币、游戏账号等）</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>处置意愿：</strong></label>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="finance_action" value="移交私钥/密码" id="finance_key">
+                                                    <label class="form-check-label" for="finance_key">移交私钥/密码</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="finance_action" value="兑换为法币后继承" id="finance_convert">
+                                                    <label class="form-check-label" for="finance_convert">兑换为法币后继承</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="finance_action" value="其他" id="finance_other">
+                                                    <label class="form-check-label" for="finance_other">其他（自定义填写）：</label>
+                                                    <input type="text" class="form-control form-control-sm mt-1" name="finance_other_text" placeholder="请说明">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 模块三：指定执行人/联系人信息模块 -->
+                        <div class="mb-4">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-person-lines-fill me-2"></i>指定执行人/联系人信息模块
+                            </h6>
+
+                            <!-- 主要联系人 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-info text-white">
+                                    <strong>主要联系人（必填）</strong>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-3">该联系人将全权负责启动并主导本声明所涉的资产处置流程</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="primary_name" class="form-label">姓名 <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="primary_name" name="primary_name" required
+                                                   placeholder="联系人姓名">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="primary_relation" class="form-label">与声明人关系 <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="primary_relation" name="primary_relation" required
+                                                   placeholder="如：配偶、子女、父母">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="primary_phone" class="form-label">联系电话 <span class="text-danger">*</span></label>
+                                            <input type="tel" class="form-control" id="primary_phone" name="primary_phone" required
+                                                   placeholder="手机号码">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 备用联系人 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-secondary text-white">
+                                    <strong>备用联系人（必填）</strong>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-3">仅当主要联系人无法履行职责时，备用联系人方可接替其职责</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="backup_name" class="form-label">姓名 <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="backup_name" name="backup_name" required
+                                                   placeholder="联系人姓名">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="backup_relation" class="form-label">与声明人关系 <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="backup_relation" name="backup_relation" required
+                                                   placeholder="如：配偶、子女、父母">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="backup_phone" class="form-label">联系电话 <span class="text-danger">*</span></label>
+                                            <input type="tel" class="form-control" id="backup_phone" name="backup_phone" required
+                                                   placeholder="手机号码">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 模块底部固定文案 -->
+                            <div class="alert alert-secondary mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>此指定仅为操作授权，并不涉及或改变任何法定继承人之实质财产继承权</strong>
+                            </div>
+                        </div>
+
+                        <!-- 模块四：法律效力说明模块 -->
+                        <div class="mb-4">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-file-earmark-text me-2"></i>法律效力说明
+                            </h6>
+
+                            <!-- 固定法律效力声明 -->
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="text-primary mb-3"><i class="bi bi-shield-check me-2"></i>法律效力声明（固定文案）</h6>
+                                    <p class="mb-0" style="line-height: 1.8;">
+                                        本人确认，本声明书旨在清晰表达本人关于数字资产处置的最终意愿，并为继承人提供明确指引。本人理解，本声明书本身并非具有直接强制执行力的法律文件，数字资产的最终归属与处理须遵守《中华人民共和国民法典》等法律规定及各平台合约。本人建议，可将本声明书进行公证，或作为本人正式遗嘱之附件，以增强其法律参考效力。
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -178,13 +250,13 @@
                         <div class="alert alert-secondary">
                             <small>
                                 <i class="bi bi-info-circle me-1"></i>
-                                <strong>提示：</strong>声明人和日期将在下载PDF时留空，需手写签署。
+                                <strong>提示：</strong>声明人签名和日期将在预览及PDF中留空，需手写签署。
                             </small>
                         </div>
 
                         <div class="d-grid">
                             <button type="submit" class="btn btn-success btn-lg">
-                                <i class="bi bi-file-plus"></i> 创建遗嘱意愿声明
+                                <i class="bi bi-file-plus"></i> 创建声明书
                             </button>
                         </div>
                     </form>
@@ -192,35 +264,33 @@
             </div>
         </div>
 
-        <!-- 遗嘱列表 -->
-        <div class="col-lg-6">
+        <!-- 声明书列表 -->
+        <div class="col-lg-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5><i class="bi bi-list-ul"></i> 我的遗嘱列表</h5>
-                    <span class="badge bg-success">{{ wills|length }} 个遗嘱</span>
+                    <h5><i class="bi bi-list-ul"></i> 我的声明书</h5>
+                    <span class="badge bg-success">{{ wills|length }} 份</span>
                 </div>
                 <div class="card-body">
                     {% if wills %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover table-sm">
                             <thead>
                                 <tr>
                                     <th>标题</th>
                                     <th>状态</th>
-                                    <th>创建时间</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for will in wills %}
                                 <tr data-will-id="{{ will.id }}" data-current-status="{{ will.status }}">
-                                    <td>{{ will.title }}</td>
+                                    <td><small>{{ will.title }}</small></td>
                                     <td>
                                         <span class="badge bg-{% if will.status == 'draft' %}secondary{% elif will.status == 'confirmed' %}success{% else %}dark{% endif %} status-badge">
                                             {% if will.status == 'draft' %}草稿{% elif will.status == 'confirmed' %}已确认{% else %}已归档{% endif %}
                                         </span>
                                     </td>
-                                    <td>{{ will.created_at.strftime('%Y-%m-%d') }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ url_for('view_will', will_id=will.id) }}" class="btn btn-outline-primary" title="查看">
@@ -233,7 +303,7 @@
                                                 <button type="button" class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" title="修改状态">
                                                     <i class="bi bi-three-dots"></i>
                                                 </button>
-                                                <ul class="dropdown-menu">
+                                                <ul class="dropdown-menu dropdown-menu-end">
                                                     <li>
                                                         <a class="dropdown-item status-change-item" href="#" data-status="draft" data-will-id="{{ will.id }}">
                                                             <i class="bi bi-pencil-square me-2"></i>草稿
@@ -253,7 +323,7 @@
                                             </div>
                                             <form method="POST" action="{{ url_for('delete_will', will_id=will.id) }}" class="d-inline">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                                <button type="submit" class="btn btn-outline-danger" title="删除" onclick="return confirm('确定要删除这个遗嘱吗？')">
+                                                <button type="submit" class="btn btn-outline-danger" title="删除" onclick="return confirm('确定要删除这份声明书吗？')">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
@@ -265,10 +335,10 @@
                         </table>
                     </div>
                     {% else %}
-                    <div class="text-center py-5">
+                    <div class="text-center py-4">
                         <i class="bi bi-file-earmark fs-1 text-muted"></i>
-                        <h5 class="text-muted mt-3">暂无数字遗嘱</h5>
-                        <p class="text-muted">创建您的第一个数字遗嘱来规划数字遗产</p>
+                        <h6 class="text-muted mt-3">暂无声明书</h6>
+                        <p class="text-muted small">创建您的第一份数字资产继承意愿声明书</p>
                     </div>
                     {% endif %}
                 </div>
@@ -277,7 +347,7 @@
             <!-- 法律提示 -->
             <div class="alert alert-warning mt-3">
                 <h6><i class="bi bi-exclamation-triangle"></i> 重要法律提示</h6>
-                <p class="mb-0">
+                <p class="mb-0 small">
                     本文件可作为您意愿的强烈表达，协助继承人沟通，但不替代正式公证遗嘱。
                     建议在制定此声明后，咨询专业律师，并考虑进行公证。
                 </p>
@@ -288,46 +358,72 @@
 
 {% block extra_js %}
 <script>
-function toggleAssetAction(checkbox) {
-    const assetId = checkbox.getAttribute('data-asset-id');
-    const actionSelect = document.querySelector(`.asset-action[data-asset-id="${assetId}"]`);
-    const heirInput = document.querySelector(`.heir-input[data-asset-id="${assetId}"]`);
-
-    if (checkbox.checked) {
-        actionSelect.disabled = false;
-        heirInput.disabled = false;
-    } else {
-        actionSelect.disabled = true;
-        actionSelect.value = '';
-        heirInput.disabled = true;
-        heirInput.value = '';
-    }
-}
-
 document.getElementById('willForm').addEventListener('submit', function(e) {
     e.preventDefault();
 
-    const assetsData = {};
-    const checkedCheckboxes = document.querySelectorAll('.asset-checkbox:checked');
+    // 收集资产数据
+    const assetsData = {
+        declarant_name: document.getElementById('declarant_name').value,
+        declarant_id: document.getElementById('declarant_id').value,
+        declarant_nation: document.getElementById('declarant_nation').value,
+        primary_name: document.getElementById('primary_name').value,
+        primary_relation: document.getElementById('primary_relation').value,
+        primary_phone: document.getElementById('primary_phone').value,
+        backup_name: document.getElementById('backup_name').value,
+        backup_relation: document.getElementById('backup_relation').value,
+        backup_phone: document.getElementById('backup_phone').value
+    };
 
-    checkedCheckboxes.forEach(function(checkbox) {
-        const assetId = checkbox.getAttribute('data-asset-id');
-        const platform = checkbox.getAttribute('data-platform');
-        const category = checkbox.getAttribute('data-category');
-        const account = checkbox.getAttribute('data-account');
-        const actionSelect = document.querySelector(`.asset-action[data-asset-id="${assetId}"]`);
-        const heirInput = document.querySelector(`.heir-input[data-asset-id="${assetId}"]`);
-        const action = actionSelect.value;
-        const heir = heirInput.value;
-
-        assetsData[assetId] = {
-            platform_name: platform,
-            category: category,
-            account: account,
-            action: action,
-            heir: heir
-        };
+    // 社交媒体
+    const socialActions = [];
+    document.querySelectorAll('input[name="social_action"]:checked').forEach(cb => {
+        if (cb.value === '其他') {
+            const otherText = document.querySelector('input[name="social_other_text"]').value;
+            socialActions.push(otherText ? `其他：${otherText}` : '其他');
+        } else {
+            socialActions.push(cb.value);
+        }
     });
+    if (socialActions.length > 0) {
+        assetsData.social = {
+            category: '社交媒体',
+            actions: socialActions
+        };
+    }
+
+    // 电子邮箱与云存储
+    const cloudActions = [];
+    document.querySelectorAll('input[name="cloud_action"]:checked').forEach(cb => {
+        if (cb.value === '其他') {
+            const otherText = document.querySelector('input[name="cloud_other_text"]').value;
+            cloudActions.push(otherText ? `其他：${otherText}` : '其他');
+        } else {
+            cloudActions.push(cb.value);
+        }
+    });
+    if (cloudActions.length > 0) {
+        assetsData.cloud = {
+            category: '电子邮箱与云存储',
+            actions: cloudActions
+        };
+    }
+
+    // 数字货币与金融App
+    const financeActions = [];
+    document.querySelectorAll('input[name="finance_action"]:checked').forEach(cb => {
+        if (cb.value === '其他') {
+            const otherText = document.querySelector('input[name="finance_other_text"]').value;
+            financeActions.push(otherText ? `其他：${otherText}` : '其他');
+        } else {
+            financeActions.push(cb.value);
+        }
+    });
+    if (financeActions.length > 0) {
+        assetsData.finance = {
+            category: '数字货币与金融App',
+            actions: financeActions
+        };
+    }
 
     document.getElementById('assets_data').value = JSON.stringify(assetsData);
     this.submit();

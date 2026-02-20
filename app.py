@@ -569,48 +569,17 @@ def decrypt_asset(asset_id):
 def wills():
     """数字遗嘱列表"""
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        special_notes = request.form.get('special_notes', '')
         assets_data = request.form.get('assets_data', '{}')
-
-        # 新的继承人信息字段
-        heir_name = request.form.get('heir_name', '')
-        heir_relation = request.form.get('heir_relation', '')
-        heir_phone = request.form.get('heir_phone', '')
-        heir_email = request.form.get('heir_email', '')
-        heir_notes = request.form.get('heir_notes', '')
-
-        # 备用联系人信息
-        backup_name = request.form.get('backup_name', '')
-        backup_relation = request.form.get('backup_relation', '')
-        backup_phone = request.form.get('backup_phone', '')
-        backup_email = request.form.get('backup_email', '')
-        backup_notes = request.form.get('backup_notes', '')
 
         try:
             assets_data_json = __import__('json').loads(assets_data)
         except:
             assets_data_json = {}
 
-        # 将继承人信息合并到assets_data中
-        if heir_name:
-            assets_data_json['heir_name'] = heir_name
-        if heir_relation:
-            assets_data_json['heir_relation'] = heir_relation
-        if heir_phone:
-            assets_data_json['heir_phone'] = heir_phone
-        if heir_email:
-            assets_data_json['heir_email'] = heir_email
-        if heir_notes:
-            assets_data_json['heir_notes'] = heir_notes
-        if special_notes:
-            assets_data_json['special_notes'] = special_notes
-
         will = DigitalWill(
             user_id=current_user.id,
-            title=title,
-            description=description,
+            title='数字资产继承意愿声明书',  # 使用固定标题
+            description='',
             assets_data=assets_data_json,
             status='draft'
         )
@@ -618,7 +587,7 @@ def wills():
         try:
             db.session.add(will)
             db.session.commit()
-            flash('数字遗嘱创建成功', 'success')
+            flash('数字资产继承意愿声明书创建成功', 'success')
             return redirect(url_for('wills'))
         except Exception as e:
             db.session.rollback()
@@ -1018,10 +987,6 @@ def edit_will(will_id):
         return redirect(url_for('wills'))
 
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        heir_info = request.form.get('heir_info', '')
-        special_notes = request.form.get('special_notes', '')
         assets_data = request.form.get('assets_data', '{}')
         new_status = request.form.get('status', will.status)
 
@@ -1047,17 +1012,7 @@ def edit_will(will_id):
         except json.JSONDecodeError:
             assets_data_json = {}
 
-        # 将新字段合并到assets_data中
-        if heir_info:
-            assets_data_json['heir_info'] = heir_info
-        if special_notes:
-            assets_data_json['special_notes'] = special_notes
-
         # 更新其他字段
-        if title:
-            will.title = title
-        if description:
-            will.description = description
         will.assets_data = assets_data_json
         will.updated_at = get_china_time()
 
