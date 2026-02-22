@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}数字资产继承意愿声明书 - 数字遗产继承平台{% endblock %}
+{% block title %}数字资产继承意愿声明书 - 故里{% endblock %}
 
 {% block content %}
 <div class="container py-4">
@@ -17,7 +17,12 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5><i class="bi bi-file-plus"></i> 创建数字资产继承意愿声明书</h5>
-                    <span class="badge bg-secondary">结构化表单</span>
+                    <div>
+                        <a href="{{ url_for('static', filename='templates/数字遗产意愿声明模板.pdf') }}" class="btn btn-outline-primary btn-sm me-2" download>
+                            <i class="bi bi-file-earmark-pdf"></i> 下载PDF模板
+                        </a>
+                        <span class="badge bg-secondary">结构化表单</span>
+                    </div>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('wills') }}" id="willForm">

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}情感关怀 - 数字遗产继承平台{% endblock %}
+{% block title %}情法相伴 - 故里{% endblock %}
 
 {% block content %}
 <div class="container py-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h2>情感关怀</h2>
-            <p class="text-muted">分享故事、获取支持，我们陪伴您走过每一段旅程</p>
+            <h2>情法相伴</h2>
+            <p class="text-muted">温暖陪伴，让数字记忆永不褪色</p>
         </div>
     </div>
 
@@ -92,6 +92,17 @@
 
         <!-- 公益普法问答 -->
         <div class="tab-pane fade" id="faq" role="tabpanel" aria-labelledby="faq-tab">
+              <!-- 搜索框 -->
+              <div class="row mb-4">
+                  <div class="col-12">
+                      <div class="input-group">
+                          <input type="text" class="form-control" id="faqSearchInput" placeholder="搜索问题...">
+                          <button class="btn btn-primary" type="button" id="faqSearchBtn">
+                              <i class="bi bi-search"></i> 搜索
+                          </button>
+                      </div>
+                  </div>
+              </div>
             <div class="row">
                 <div class="col-md-3">
                     <div class="card sticky-top" style="top: 80px;">
@@ -116,6 +127,19 @@
                 </div>
 
                 <div class="col-md-9">
+                      <!-- 搜索结果区域 -->
+                      <div id="faqSearchResults" style="display: none;">
+                          <div class="card mb-3">
+                              <div class="card-header d-flex justify-content-between align-items-center">
+                                  <h6 class="mb-0"><i class="bi bi-search"></i> 搜索结果</h6>
+                                  <button class="btn btn-sm btn-outline-secondary" id="clearSearchBtn">
+                                      <i class="bi bi-x-circle"></i> 清除搜索
+                                  </button>
+                              </div>
+                              <div class="card-body" id="searchResultsContent">
+                              </div>
+                          </div>
+                      </div>
                     <div class="tab-content" id="v-pills-tabContent">
                         {% for category in faq_categories %}
                         <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
@@ -126,7 +150,7 @@
                                     {% if faq.category == category %}
                                 <div class="accordion-item">
                                     <h2 class="accordion-header" id="heading{{ faq.id }}">
-                                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                                        <button class="accordion-button collapsed"
                                                 type="button"
                                                 data-bs-toggle="collapse"
                                                 data-bs-target="#collapse{{ faq.id }}">
@@ -134,10 +158,10 @@
                                         </button>
                                     </h2>
                                     <div id="collapse{{ faq.id }}"
-                                         class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                                         class="accordion-collapse collapse"
                                          data-bs-parent="#accordion-{{ category }}">
                                         <div class="accordion-body">
-                                            {{ faq.answer }}
+                                            {{ faq.answer | replace('\\n', '<br>') | safe }}
                                         </div>
                                     </div>
                                 </div>
@@ -158,10 +182,10 @@
                             <h5><i class="bi bi-chat-dots"></i> 没有找到您的问题？</h5>
                             <p class="text-muted">如果您有其他疑问，欢迎联系我们</p>
                             <div class="d-flex justify-content-center gap-3">
-                                <a href="mailto:contact@digitalheritage.com" class="btn btn-primary">
+                                <a href="mailto:2121301081@qq.com" class="btn btn-primary">
                                     <i class="bi bi-envelope"></i> 发送邮件
                                 </a>
-                                <a href="tel:400-888-8888" class="btn btn-success">
+                                <a href="tel:023-62471932" class="btn btn-success">
                                     <i class="bi bi-telephone"></i> 电话咨询
                                 </a>
                             </div>
@@ -235,117 +259,215 @@
 </div>
 
 <script>
-// 故事分类过滤
-document.querySelectorAll('#storyFilters button').forEach(button => {
-    button.addEventListener('click', function() {
-        document.querySelectorAll('#storyFilters button').forEach(btn => btn.classList.remove('active'));
-        this.classList.add('active');
-
-        const filter = this.getAttribute('data-filter');
-        const cards = document.querySelectorAll('.story-card');
-
-        cards.forEach(card => {
-            const category = card.getAttribute('data-category');
-            if (filter === 'all' || category === filter) {
-                card.style.display = 'block';
-            } else {
-                card.style.display = 'none';
-            }
-        });
-    });
-});
-
-// 显示故事详情
-function showStoryDetail(storyId) {
-    const stories = [
-        {% for story in stories %}
+  // 故事分类过滤
+  document.querySelectorAll('#storyFilters button').forEach(button => {
+      button.addEventListener('click', function() {
+          document.querySelectorAll('#storyFilters button').forEach(btn => btn.classList.remove('active'));
+          this.classList.add('active');
+  
+          const filter = this.getAttribute('data-filter');
+          const cards = document.querySelectorAll('.story-card');
+  
+          cards.forEach(card => {
+              const category = card.getAttribute('data-category');
+              if (filter === 'all' || category === filter) {
+                  card.style.display = 'block';
+              } else {
+                  card.style.display = 'none';
+              }
+          });
+      });
+  });
+  
+  // 显示故事详情
+  function showStoryDetail(storyId) {
+      const stories = [
+          {% for story in stories %}
+          {
+              id: {{ story.id }},
+              title: "{{ story.title }}",
+              content: "{{ story.content }}",
+              author: "{{ story.author }}",
+              category: "{{ story.category }}",
+              created_at: "{{ story.created_at.strftime('%Y-%m-%d') }}"
+          }{% if not loop.last %},{% endif %}
+          {% endfor %}
+      ];
+  
+      const story = stories.find(s => s.id === storyId);
+      if (story) {
+          document.getElementById('storyDetailTitle').textContent = story.title;
+          document.getElementById('storyDetailContent').innerHTML = `
+              <div class="mb-3">
+                  <span class="badge bg-${story.category === '个人分享' ? 'primary' : 'success'}">
+                      ${story.category}
+                  </span>
+                  <small class="text-muted ms-2">
+                      <i class="bi bi-calendar"></i> ${story.created_at}
+                  </small>
+                  <small class="text-muted ms-2">
+                      <i class="bi bi-person"></i> ${story.author}
+                  </small>
+              </div>
+              <div class="story-content" style="line-height: 1.8;">
+                  ${story.content.replace(/\n/g, '<br>')}
+              </div>
+          `;
+          const modal = new bootstrap.Modal(document.getElementById('storyDetailModal'));
+          modal.show();
+      }
+  }
+  
+  // 提交故事
+  async function submitStory() {
+      const form = document.getElementById('shareStoryForm');
+      const title = document.getElementById('storyTitle').value;
+      const category = document.getElementById('storyCategory').value;
+      const content = document.getElementById('storyContent').value;
+      const author = document.getElementById('storyAuthor').value;
+  
+      if (!title || !content || !author) {
+          alert('请填写所有必填字段');
+          return;
+      }
+  
+      try {
+          const formData = new FormData();
+          formData.append('title', title);
+          formData.append('category', category);
+          formData.append('content', content);
+          formData.append('author', author);
+  
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  
+          const response = await fetch('/stories/submit', {
+              method: 'POST',
+              headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
+              body: formData
+          });
+  
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+              throw new Error(`服务器返回了非JSON响应 (${response.status})`);
+          }
+  
+          const result = await response.json();
+  
+          if (result.success) {
+              alert(result.message);
+              const modal = bootstrap.Modal.getInstance(document.getElementById('shareStoryModal'));
+              modal.hide();
+              form.reset();
+          } else {
+              alert(result.message || '提交失败');
+          }
+      } catch (error) {
+          console.error('提交故事失败:', error);
+          if (error.message && error.message.includes('登录')) {
+              alert('请先登录后再提交故事');
+              window.location.href = '/login?next=/care';
+          } else {
+              alert('提交失败，请稍后重试');
+          }
+      }
+  }
+  
+    // FAQ搜索功能
+    const faqData = [
+        {% for faq in faqs %}
         {
-            id: {{ story.id }},
-            title: "{{ story.title }}",
-            content: "{{ story.content }}",
-            author: "{{ story.author }}",
-            category: "{{ story.category }}",
-            created_at: "{{ story.created_at.strftime('%Y-%m-%d') }}"
+            id: {{ faq.id }},
+            question: {{ faq.question | tojson | safe }},
+            answer: {{ faq.answer | tojson | safe }},
+            category: {{ faq.category | tojson | safe }}
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];
-
-    const story = stories.find(s => s.id === storyId);
-    if (story) {
-        document.getElementById('storyDetailTitle').textContent = story.title;
-        document.getElementById('storyDetailContent').innerHTML = `
-            <div class="mb-3">
-                <span class="badge bg-${story.category === '个人分享' ? 'primary' : 'success'}">
-                    ${story.category}
-                </span>
-                <small class="text-muted ms-2">
-                    <i class="bi bi-calendar"></i> ${story.created_at}
-                </small>
-                <small class="text-muted ms-2">
-                    <i class="bi bi-person"></i> ${story.author}
-                </small>
-            </div>
-            <div class="story-content" style="line-height: 1.8;">
-                ${story.content.replace(/\n/g, '<br>')}
-            </div>
-        `;
-        const modal = new bootstrap.Modal(document.getElementById('storyDetailModal'));
-        modal.show();
-    }
-}
-
-// 提交故事
-async function submitStory() {
-    const form = document.getElementById('shareStoryForm');
-    const title = document.getElementById('storyTitle').value;
-    const category = document.getElementById('storyCategory').value;
-    const content = document.getElementById('storyContent').value;
-    const author = document.getElementById('storyAuthor').value;
-
-    if (!title || !content || !author) {
-        alert('请填写所有必填字段');
-        return;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('category', category);
-        formData.append('content', content);
-        formData.append('author', author);
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-        const response = await fetch('/stories/submit', {
-            method: 'POST',
-            headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
-            body: formData
-        });
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error(`服务器返回了非JSON响应 (${response.status})`);
+  
+    // 搜索按钮点击事件
+    document.getElementById('faqSearchBtn')?.addEventListener('click', performFaqSearch);
+  
+    // 搜索框回车事件
+    document.getElementById('faqSearchInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performFaqSearch();
         }
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert(result.message);
-            const modal = bootstrap.Modal.getInstance(document.getElementById('shareStoryModal'));
-            modal.hide();
-            form.reset();
+    });
+  
+    // 实时搜索
+    document.getElementById('faqSearchInput')?.addEventListener('input', function() {
+        if (this.value.trim() === '') {
+            clearFaqSearch();
+        }
+    });
+  
+    function performFaqSearch() {
+        const searchTerm = document.getElementById('faqSearchInput').value.trim().toLowerCase();
+        
+        if (!searchTerm) {
+            clearFaqSearch();
+            return;
+        }
+        
+        const results = faqData.filter(faq => 
+            faq.question.toLowerCase().includes(searchTerm) || 
+            faq.answer.toLowerCase().includes(searchTerm)
+        );
+        
+        displayFaqSearchResults(results, searchTerm);
+    }
+  
+    function displayFaqSearchResults(results, searchTerm) {
+        const resultsContainer = document.getElementById('searchResultsContent');
+        const searchResultsDiv = document.getElementById('faqSearchResults');
+        const tabContent = document.getElementById('v-pills-tabContent');
+        
+        if (results.length === 0) {
+            resultsContainer.innerHTML = '<p class="text-muted text-center">没有找到相关问题</p>';
         } else {
-            alert(result.message || '提交失败');
+            let html = '<div class="accordion" id="searchResultsAccordion"';
+            results.forEach((faq, index) => {
+                html += `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button ${index !== 0 ? 'collapsed' : ''}" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#searchCollapse${faq.id}">
+                                <span class="badge bg-secondary me-2">${faq.category}</span>
+                                ${highlightText(faq.question, searchTerm)}
+                            </button>
+                        </h2>
+                        <div id="searchCollapse${faq.id}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}"
+                             data-bs-parent="#searchResultsAccordion">
+                            <div class="accordion-body">
+                                ${highlightText(faq.answer, searchTerm)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            resultsContainer.innerHTML = html;
         }
-    } catch (error) {
-        console.error('提交故事失败:', error);
-        if (error.message && error.message.includes('登录')) {
-            alert('请先登录后再提交故事');
-            window.location.href = '/login?next=/care';
-        } else {
-            alert('提交失败，请稍后重试');
-        }
+        
+        searchResultsDiv.style.display = 'block';
+        tabContent.style.display = 'none';
     }
-}
+  
+    function highlightText(text, searchTerm) {
+        // 将\n替换为<br>，并高亮搜索词
+        let result = text.replace(/\\n/g, '<br>');
+        const regex = new RegExp(`(${searchTerm})`, 'gi');
+        return result.replace(regex, '<mark>$1</mark>');
+    }
+  
+    
+    function clearFaqSearch() {
+        document.getElementById('faqSearchInput').value = '';
+        document.getElementById('faqSearchResults').style.display = 'none';
+        document.getElementById('v-pills-tabContent').style.display = 'block';
+    }
+    
+    // 清除搜索按钮
+    document.getElementById('clearSearchBtn')?.addEventListener('click', clearFaqSearch);
 </script>
-{% endblock %}
+  {% endblock %}

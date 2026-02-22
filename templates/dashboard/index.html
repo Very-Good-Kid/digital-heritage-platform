@@ -33,12 +33,12 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h5 class="card-title">数字遗嘱</h5>
+                            <h5 class="card-title">意愿声明</h5>
                             <h2 class="display-4">{{ wills|length }}</h2>
                         </div>
                         <i class="bi bi-file-text fs-1"></i>
                     </div>
-                    <a href="{{ url_for('wills') }}" class="btn btn-light btn-sm mt-2">管理遗嘱</a>
+                    <a href="{{ url_for('wills') }}" class="btn btn-light btn-sm mt-2">管理意愿声明</a>
                 </div>
             </div>
         </div>
@@ -87,7 +87,7 @@
                             <i class="bi bi-plus-circle"></i> 添加数字资产
                         </a>
                         <a href="{{ url_for('wills') }}" class="btn btn-success">
-                            <i class="bi bi-file-plus"></i> 创建数字遗嘱
+                            <i class="bi bi-file-plus"></i> 创建意愿声明
                         </a>
                         <a href="{{ url_for('inheritance_guide') }}" class="btn btn-info">
                             <i class="bi bi-compass"></i> 查看继承导航
@@ -111,7 +111,7 @@
 
                     {% if wills|length == 0 %}
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> 创建数字遗嘱可以更好地保护您的数字遗产。
+                        <i class="bi bi-info-circle"></i> 创建意愿声明可以更好地保护您的数字遗产。
                     </div>
                     {% endif %}
 
