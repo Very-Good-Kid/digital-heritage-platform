@@ -45,6 +45,9 @@ def get_china_time():
 app = Flask(__name__)
 app.config.from_object(config['default'])
 
+# 性能优化: 静态文件缓存
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # 1年缓存
+
 # 确保数据目录存在（在应用启动前）
 data_dir = app.config.get('DATA_DIR', 'instance')
 if not os.path.exists(data_dir):
@@ -417,21 +420,23 @@ def after_request(response):
 # 数据库连接健康检查中间件
 @app.before_request
 def check_db_connection():
-    """在每个请求前检查数据库连接"""
-    try:
-        # 执行一个简单的查询来检查连接
-        db.session.execute(db.text('SELECT 1'))
-    except Exception as e:
-        # 如果连接失败,尝试重连
-        print(f"[WARN] Database connection lost, attempting to reconnect: {e}")
+    """在每个请求前检查数据库连接 - 优化版本"""
+    # 只在特定路由检查,避免每个请求都检查
+    if request.endpoint and request.endpoint.startswith('admin'):
         try:
-            db.session.remove()
+            # 执行一个简单的查询来检查连接
             db.session.execute(db.text('SELECT 1'))
-            print("[INFO] Database reconnection successful")
-        except Exception as e2:
-            print(f"[ERROR] Database reconnection failed: {e2}")
-            # 如果重连失败,返回错误页面
-            return "数据库连接失败,请稍后重试", 503
+        except Exception as e:
+            # 如果连接失败,尝试重连
+            print(f"[WARN] Database connection lost, attempting to reconnect: {e}")
+            try:
+                db.session.remove()
+                db.session.execute(db.text('SELECT 1'))
+                print("[INFO] Database reconnection successful")
+            except Exception as e2:
+                print(f"[ERROR] Database reconnection failed: {e2}")
+                # 如果重连失败,返回错误页面
+                return "数据库连接失败,请稍后重试", 503
 
 # 路由：处理 Chrome DevTools 请求（避免 404 报错）
 @app.route('/.well-known/appspecific/com.chrome.devtools.json')
@@ -1607,8 +1612,7 @@ def generate_inheritance_steps(platform, scenario, policy):
                     'templates': [],
                     'legal_actions': [
                         '非诉维权途径：由律师出具正式律师函，向平台公司主张合法继承权，明确诉求与法律依据，推动诉求解决；向12315平台、工信部、政务服务热线等监管部门提交合规投诉，辅助推进问题解决。',
-                        '诉讼维权途径：',
-                        '（1）前置专业法律咨询：委托具备网络虚拟财产、继承纠纷办案经验的专业律师，提供全套申请材料、沟通记录、官方驳回凭证，确认维权方案，完整整理证据链。',
+                        '诉讼维权途径：<br>（1）前置专业法律咨询：委托具备网络虚拟财产、继承纠纷办案经验的专业律师，提供全套申请材料、沟通记录、官方驳回凭证，确认维权方案，完整整理证据链。',
                         '（2）向有管辖权的人民法院提起继承纠纷诉讼，提交全套证据材料，主张合法继承权，依据法院生效的判决书、调解书，向平台申请执行对应的遗产处置方案。'
                     ]
                 }

@@ -43,10 +43,11 @@ class ProductionConfig(Config):
 
         # 添加SSL和连接池参数以提高性能和稳定性
         # Neon数据库需要SSL连接
+        # 优化连接池配置
         if '?' in DATABASE_URL:
-            DATABASE_URL += '&sslmode=require&pool_pre_ping=True&pool_size=5&max_overflow=10&pool_recycle=3600'
+            DATABASE_URL += '&sslmode=require&pool_pre_ping=True&pool_size=10&max_overflow=20&pool_recycle=1800&pool_timeout=30'
         else:
-            DATABASE_URL += '?sslmode=require&pool_pre_ping=True&pool_size=5&max_overflow=10&pool_recycle=3600'
+            DATABASE_URL += '?sslmode=require&pool_pre_ping=True&pool_size=10&max_overflow=20&pool_recycle=1800&pool_timeout=30'
 
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
         print(f"✅ 使用外部PostgreSQL数据库: {DATABASE_URL.split('@')[0]}@...")
