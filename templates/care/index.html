@@ -14,15 +14,15 @@
     <!-- 选项卡导航 -->
     <ul class="nav nav-tabs mb-4" id="careTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="stories-tab" data-bs-toggle="tab" data-bs-target="#stories" 
-                    type="button" role="tab" aria-controls="stories" aria-selected="true">
-                <i class="bi bi-heart me-2"></i>故事墙
+            <button class="nav-link active" id="faq-tab" data-bs-toggle="tab" data-bs-target="#faq" 
+                    type="button" role="tab" aria-controls="faq" aria-selected="true">
+                <i class="bi bi-question-circle me-2"></i>公益普法问答
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="faq-tab" data-bs-toggle="tab" data-bs-target="#faq" 
-                    type="button" role="tab" aria-controls="faq" aria-selected="false">
-                <i class="bi bi-question-circle me-2"></i>公益普法问答
+            <button class="nav-link" id="stories-tab" data-bs-toggle="tab" data-bs-target="#stories" 
+                    type="button" role="tab" aria-controls="stories" aria-selected="false">
+                <i class="bi bi-heart me-2"></i>故事墙
             </button>
         </li>
     </ul>
@@ -30,7 +30,7 @@
     <!-- 选项卡内容 -->
     <div class="tab-content" id="careTabContent">
         <!-- 故事墙 -->
-        <div class="tab-pane fade show active" id="stories" role="tabpanel" aria-labelledby="stories-tab">
+        <div class="tab-pane fade" id="stories" role="tabpanel" aria-labelledby="stories-tab">
             <!-- 故事分类 -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -91,7 +91,7 @@
         </div>
 
         <!-- 公益普法问答 -->
-        <div class="tab-pane fade" id="faq" role="tabpanel" aria-labelledby="faq-tab">
+        <div class="tab-pane fade show active" id="faq" role="tabpanel" aria-labelledby="faq-tab">
               <!-- 搜索框 -->
               <div class="row mb-4">
                   <div class="col-12">

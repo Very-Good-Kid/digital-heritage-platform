@@ -337,8 +337,39 @@ def init_default_faqs():
     db.session.commit()
     print(f"[OK] Added {len(faqs_data)} FAQs")
 
-# 在应用启动时执行初始化
-init_database_on_startup()
+# 使用 before_request 替代模块级别调用
+# 这样可以确保应用完全初始化后再执行数据库初始化
+_db_initialized = False
+
+@app.before_request
+def initialize_database():
+    """在第一个请求前初始化数据库（仅执行一次）"""
+    global _db_initialized
+    if not _db_initialized:
+        _db_initialized = True
+        try:
+            db.create_all()
+            print("[OK] Database tables created/verified")
+            
+            from models import PolicyDetail
+            
+            if PlatformPolicy.query.count() == 0:
+                print("[INFO] Initializing platform policies...")
+                init_default_policies()
+            
+            if PolicyDetail.query.count() == 0:
+                print("[INFO] Initializing policy details...")
+                init_default_policy_details()
+
+            migrate_asset_categories()
+
+            if FAQ.query.count() == 0:
+                print("[INFO] Initializing FAQ data...")
+                init_default_faqs()
+
+            print("[OK] Database initialization complete")
+        except Exception as e:
+            print(f"[ERROR] Database initialization failed: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
