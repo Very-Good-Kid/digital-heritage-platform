@@ -20,7 +20,7 @@ class CustomCSRFProtect(CSRFProtect):
     def _get_view(self):
         """获取当前请求的视图函数"""
         endpoint = request.endpoint
-        if endpoint:
+        if endpoint and hasattr(self, 'app') and self.app:
             return self.app.view_functions.get(endpoint)
         return None
 from werkzeug.security import generate_password_hash, check_password_hash
