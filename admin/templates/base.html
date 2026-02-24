@@ -467,6 +467,21 @@
         async function safeJsonFetch(url, options = {}) {
             try {
                 const response = await fetch(url, options);
+                
+                // Handle authentication errors
+                if (response.status === 401) {
+                    const data = await response.json();
+                    alert(data.message || '请先登录');
+                    window.location.href = '/login';
+                    throw new Error(data.message || '请先登录');
+                }
+                
+                if (response.status === 403) {
+                    const data = await response.json();
+                    alert(data.message || '权限不足');
+                    throw new Error(data.message || '权限不足');
+                }
+                
                 const contentType = response.headers.get('content-type');
                 
                 // Check if response is JSON
@@ -479,6 +494,9 @@
                 
                 // If response starts with '<!doctype', it's HTML
                 if (text.toLowerCase().startsWith('<!doctype') || text.toLowerCase().startsWith('<html')) {
+                    // 可能是登录过期，重定向到登录页
+                    alert('登录已过期，请重新登录');
+                    window.location.href = '/login';
                     throw new Error('服务器返回了错误页面，请检查权限或登录状态');
                 }
                 

@@ -69,6 +69,15 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = '请先登录访问此页面'
 
+# 处理未登录请求 - API返回JSON，页面返回重定向
+@login_manager.unauthorized_handler
+def unauthorized():
+    """处理未登录请求"""
+    if request.path.startswith('/admin/api/'):
+        return jsonify({'success': False, 'message': '请先登录'}), 401
+    flash('请先登录访问此页面', 'warning')
+    return redirect(url_for('login'))
+
 # 注册蓝图
 app.register_blueprint(admin_bp)
 
@@ -77,6 +86,122 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static/uploads', exist_ok=True)
 os.makedirs('temp_pdfs', exist_ok=True)
 
+# 自动初始化数据库（部署时自动执行）
+def init_database_on_startup():
+    """应用启动时自动初始化数据库表和数据"""
+    with app.app_context():
+        try:
+            # 创建所有表
+            db.create_all()
+            print("[OK] Database tables created/verified")
+            
+            # 导入 PolicyDetail 模型
+            from models import PolicyDetail
+            
+            # 检查是否需要初始化政策数据
+            if PlatformPolicy.query.count() == 0:
+                print("[INFO] Initializing platform policies...")
+                init_default_policies()
+            
+            # 检查是否需要初始化政策详情数据
+            if PolicyDetail.query.count() == 0:
+                print("[INFO] Initializing policy details...")
+                init_default_policy_details()
+                
+            print("[OK] Database initialization complete")
+        except Exception as e:
+            print(f"[ERROR] Database initialization failed: {e}")
+
+def init_default_policies():
+    """初始化默认平台政策数据"""
+    from models import PolicyDetail
+    
+    policies_data = [
+        {
+            'platform_name': 'QQ',
+            'policy_content': '账号本身不可被继承；账号内财产可被继承',
+            'attitude': '明确禁止',
+            'inherit_possibility': '低',
+            'customer_service': '综合热线：4006-700-700（9:00-22:00）；在线联系：腾讯客服公众号/小程序、网站kf.qq.com；本地备用：0755-83765566',
+            'legal_basis': '《QQ号码规则》规定QQ号码所有权属于腾讯，使用权仅属于初始申请注册人，明确禁止继承。',
+            'risk_warning': 'QQ账号长期未登录可能被回收，继承人可能永久失去访问渠道。'
+        },
+        {
+            'platform_name': '微信',
+            'policy_content': '账号本身不可被继承；账号内财产可被继承',
+            'attitude': '明确禁止',
+            'inherit_possibility': '低',
+            'customer_service': '客服热线：95017；在线联系：微信APP内「我-设置-帮助与反馈」、微信/QQ端「腾讯客服」小程序',
+            'legal_basis': '《腾讯微信软件许可及服务协议》规定微信账号所有权归腾讯，使用权仅属于初始申请注册人，明确禁止继承。',
+            'risk_warning': '微信零钱余额需凭公证遗嘱、继承权公证书等向财付通公司申请提取。'
+        },
+        {
+            'platform_name': '抖音',
+            'policy_content': '账号本身原则上不可继承，但司法实践已有突破；账号内财产可被继承；逝者个人信息可依法复制/下载/转移',
+            'attitude': '有限支持',
+            'inherit_possibility': '中',
+            'customer_service': '客服热线：95152；在线联系：抖音APP内「我-≡-我的客服」、微信/QQ端搜索抖音公众号；官方邮箱：feedback@douyin.com',
+            'legal_basis': '《抖音隐私政策》3.5条规定逝者近亲属可依法行使个人信息相关权利，账号可设为纪念账号。',
+            'risk_warning': '逝者近亲属需提交身份证明、死亡证明、亲属关系证明等材料完成核验。'
+        }
+    ]
+    
+    for data in policies_data:
+        policy = PlatformPolicy(**data)
+        db.session.add(policy)
+    
+    db.session.commit()
+    print(f"[OK] Added {len(policies_data)} platform policies")
+
+def init_default_policy_details():
+    """初始化默认政策条款详情数据"""
+    from models import PolicyDetail
+    
+    policy_details_data = {
+        '微信': [
+            {'policy_title': '《微信支付用户服务协议》第9.3条', 'policy_text': '"如你需要终止使用本服务时，你可以按照微信客户端的页面提示申请注销微信支付账户。……你的微信支付账户不得存在未处理完的交易或其他未了结的权利义务。"', 'legal_interpretation': '条款明确用户主动注销微信支付账户的前提。在继承场景中继承人要处理被继承人的微信支付账户，需先结清账户下所有未完成的交易。', 'display_order': 1},
+            {'policy_title': '《腾讯服务协议》第3.1条', 'policy_text': '"腾讯服务账号的所有权归腾讯公司所有，用户完成申请注册手续后，仅获得腾讯服务账号的使用权，且该使用权仅属于初始申请注册人。"', 'legal_interpretation': '条款确立了"账号所有权归腾讯，使用权仅归初始注册人"的核心逻辑，从合同层面彻底排除了通过继承获得账号使用权的可能性。', 'display_order': 2},
+            {'policy_title': '《微信支付用户服务协议》第1.6条', 'policy_text': '"你已知晓，\'零钱\'所记录的资金余额不同于你本人的银行存款，其实质为你委托财付通公司保管的、所有权归属于你的预付价值。"', 'legal_interpretation': '微信零钱余额是用户对财付通享有的债权，根据《民法典》继承规定，债权属于可继承的遗产范围。', 'display_order': 3},
+            {'policy_title': '《腾讯微信软件许可及服务协议》7.1.2条', 'policy_text': '"微信账号的所有权归腾讯公司所有，用户完成申请注册手续后，仅获得微信账号的使用权，且该使用权仅属于初始申请注册人。"', 'legal_interpretation': '账号使用权与初始注册人的人身身份紧密绑定，具有高度的人身专属性。', 'display_order': 4},
+            {'policy_title': '《腾讯微信软件许可及服务协议》7.1.5条', 'policy_text': '"针对基于微信账号创建的\'功能账号\'，同样规定非初始申请注册人不得通过受赠、继承、承租、受让或者其他任何方式使用该账号。"', 'legal_interpretation': '条款将"继承"明确列入禁止情形，从合同约定层面切断了继承人通过继承取得功能账号使用权的路径。', 'display_order': 5}
+        ],
+        'QQ': [
+            {'policy_title': '《QQ号码规则》第二条：QQ号码的性质', 'policy_text': '"QQ号码是腾讯按照本规则授权注册用户用于登录、使用腾讯的软件或服务的数字标识，其所有权属于腾讯。"', 'legal_interpretation': 'QQ号码的所有权归属于腾讯公司，用户仅获得使用权，继承人无法主张对QQ号码本身的所有权。', 'display_order': 1},
+            {'policy_title': '《QQ号码规则》第五条/第八条', 'policy_text': '"QQ号码使用权仅属于初始申请注册人。非初始申请注册人不得通过受赠、继承、承租、受让或者其他任何方式使用QQ号码。"', 'legal_interpretation': '条款明确禁止继承、赠与、借用、租用、转让、售卖等多种流转方式。', 'display_order': 2},
+            {'policy_title': '《QQ软件许可及服务协议》第3条', 'policy_text': '若您注册的QQ号码长期没有登录或使用，腾讯有权将QQ号码进行回收处理。', 'legal_interpretation': '被继承人去世后，其QQ账号必然会进入长期未使用的状态，腾讯可依法回收账号。', 'display_order': 3},
+            {'policy_title': '《QQ软件许可及服务协议》第8.1.5条、第8.3.3条', 'policy_text': '"腾讯将会尽其商业上的合理努力保障您在本服务中的数据存储安全，但是，腾讯并不能就此提供完全保证。"', 'legal_interpretation': '即便继承人能证明自身继承权，也可能因账号长期未使用被平台终止服务，导致数据被删除。', 'display_order': 4},
+            {'policy_title': '《QQ软件许可及服务协议》第7.6条', 'policy_text': '"腾讯不会将您的个人信息转移或披露给任何第三方，除非相关法律法规或司法机关、行政机关要求。"', 'legal_interpretation': '继承人必须通过诉讼等司法程序取得法院调查令、判决书等法律文件，腾讯才有合同依据配合披露相关信息。', 'display_order': 5}
+        ],
+        '抖音': [
+            {'policy_title': '《抖音隐私政策》3.3 复制、转移您的个人信息', 'policy_text': '如果您需要复制或下载我们收集存储的个人信息，您可以通过【我】-【☰】-【设置】-【个人信息管理】申请个人信息的下载。', 'legal_interpretation': '本条款的法定依据为《个人信息保护法》第四十五条规定的个人信息可携带权，逝者近亲属可依法行使该权利。', 'display_order': 1},
+            {'policy_title': '《抖音隐私政策》3.4 账号注销', 'policy_text': '您可以在【我】-【☰】-【设置】-【账号与安全】-【注销账号】，或进入【抖音安全中心】进行账号注销。', 'legal_interpretation': '逝者近亲属若需注销逝者账号，需先完成亲属身份、逝者死亡证明等材料核验。', 'display_order': 2},
+            {'policy_title': '《抖音隐私政策》3.5 逝者的个人信息保护', 'policy_text': '"如抖音用户不幸去世，其近亲属为了自身的合法、正当利益，可通过抖音手机客户端中的【我】-【☰】-【我的客服】与我们取得联系。"', 'legal_interpretation': '条款契合《个人信息保护法》第四十九条，逝者近亲属可对逝者账号及个人信息行使冻结、删除等权利，账号可设为纪念账号。', 'display_order': 3}
+        ]
+    }
+    
+    count = 0
+    for platform_name, details in policy_details_data.items():
+        platform = PlatformPolicy.query.filter_by(platform_name=platform_name).first()
+        if not platform:
+            continue
+        
+        for detail_data in details:
+            detail = PolicyDetail(
+                platform_policy_id=platform.id,
+                policy_title=detail_data['policy_title'],
+                policy_text=detail_data['policy_text'],
+                legal_interpretation=detail_data['legal_interpretation'],
+                display_order=detail_data['display_order']
+            )
+            db.session.add(detail)
+            count += 1
+    
+    db.session.commit()
+    print(f"[OK] Added {count} policy details")
+
+# 在应用启动时执行初始化
+init_database_on_startup()
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -84,8 +209,16 @@ def load_user(user_id):
 # 设置响应编码
 @app.after_request
 def after_request(response):
-    """确保所有响应使用UTF-8编码"""
-    response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    """确保响应使用UTF-8编码"""
+    # 只修改HTML响应，不影响JSON等API响应
+    content_type = response.headers.get('Content-Type', '')
+    if 'text/html' in content_type or not content_type:
+        # 如果没有设置Content-Type或为HTML，则设置为UTF-8
+        if '; charset' not in content_type:
+            if content_type:
+                response.headers['Content-Type'] = f"{content_type}; charset=utf-8"
+            else:
+                response.headers['Content-Type'] = 'text/html; charset=utf-8'
     return response
 
 # 数据库连接健康检查中间件
@@ -112,6 +245,18 @@ def check_db_connection():
 def chrome_devtools():
     """处理 Chrome DevTools 的配置请求"""
     return '{}', 200, {'Content-Type': 'application/json'}
+
+# 路由：favicon
+@app.route('/favicon.ico')
+def favicon():
+    """网站图标 - 使用简单的SVG图标"""
+    from flask import Response
+    # 创建一个简单的SVG图标
+    svg_icon = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+        <rect width="32" height="32" fill="#667eea" rx="6"/>
+        <text x="16" y="22" font-size="18" fill="white" text-anchor="middle" font-weight="bold">D</text>
+    </svg>"""
+    return Response(svg_icon, mimetype='image/svg+xml')
 
 # 路由：首页
 @app.route('/')
@@ -1106,14 +1251,25 @@ def policies():
 @app.route('/inheritance')
 def inheritance():
     """身后继承 - 整合平台政策矩阵和继承导航"""
+    from models import PolicyDetail
     policies = PlatformPolicy.query.order_by(PlatformPolicy.platform_name).all()
     platforms = PlatformPolicy.query.filter(PlatformPolicy.platform_name.in_(['微信', 'QQ', '抖音'])).all()
+    
+    # 预加载政策详情
+    policies_with_details = []
+    for policy in policies:
+        details = PolicyDetail.query.filter_by(platform_policy_id=policy.id).order_by(PolicyDetail.display_order).all()
+        policies_with_details.append({
+            'policy': policy,
+            'details': details
+        })
+    
     scenarios = [
         {'id': 'scenario1', 'name': '有遗嘱+有密码', 'description': '您拥有合法的数字遗嘱和账户密码'},
         {'id': 'scenario2', 'name': '有遗嘱+无密码', 'description': '您拥有合法的数字遗嘱但没有账户密码'},
         {'id': 'scenario3', 'name': '无遗嘱+无密码', 'description': '您没有数字遗嘱和账户密码'}
     ]
-    return render_template('inheritance/index.html', policies=policies, platforms=platforms, scenarios=scenarios)
+    return render_template('inheritance/index.html', policies=policies, policies_with_details=policies_with_details, platforms=platforms, scenarios=scenarios)
 
 # 路由：继承导航
 @app.route('/inheritance-guide', methods=['GET', 'POST'])

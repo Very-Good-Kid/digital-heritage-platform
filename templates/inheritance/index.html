@@ -87,16 +87,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for policy in policies %}
-                                    {% set details = policy.policy_details.order_by('display_order').all() %}
-                                    {% for detail in details %}
+                                {% for item in policies_with_details %}
+                                    {% for detail in item.details %}
                                     <tr>
                                         {% if loop.first %}
-                                        <td rowspan="{{ details|length }}" style="vertical-align: middle; text-align: center;"><strong>{{ policy.platform_name }}</strong></td>
+                                        <td rowspan="{{ item.details|length }}" style="vertical-align: middle; text-align: center;"><strong>{{ item.policy.platform_name }}</strong></td>
                                         {% endif %}
                                         <td style="vertical-align: middle;">
-                                            <strong>{{ detail.policy_title | safe }}</strong><br>
-                                            {{ detail.policy_text | safe }}
+                                            <strong>{{ detail.policy_title }}</strong><br>
+                                            {{ detail.policy_text }}
                                         </td>
                                         <td style="vertical-align: middle;">{{ detail.legal_interpretation | replace('\n', '<br>') | safe }}</td>
                                     </tr>

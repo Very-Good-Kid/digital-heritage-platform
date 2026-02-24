@@ -9,6 +9,12 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     UPLOAD_FOLDER = 'uploads'
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+    
+    # 会话配置 - 确保在部署环境中持久化
+    SESSION_COOKIE_SECURE = False  # 开发环境为False，生产环境根据需要设置
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_PERMANENT = True
 
 class DevelopmentConfig(Config):
     """开发环境配置"""
@@ -60,6 +66,17 @@ class ProductionConfig(Config):
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         except:
             pass
+
+    # 生产环境会话配置
+    SESSION_COOKIE_SECURE = True  # 生产环境使用HTTPS时设置为True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_PERMANENT = True
+
+    # 确保SECRET_KEY在环境中设置
+    if not os.environ.get('SECRET_KEY'):
+        print("⚠️  警告: 生产环境未设置SECRET_KEY环境变量！")
+        print("    请在 Render 环境变量中设置 SECRET_KEY")
 
 config = {
     'development': DevelopmentConfig,
