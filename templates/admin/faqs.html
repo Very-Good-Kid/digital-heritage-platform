@@ -34,12 +34,14 @@
                     <tr data-faq-id="{{ faq.id }}">
                         <td>{{ faq.order }}</td>
                         <td>
-                            {% if faq.category == '基础概念' %}
+                            {% if faq.category == '概念与价值' %}
                             <span class="badge badge-soft-primary"><i class="bi bi-lightbulb me-1"></i>{{ faq.category }}</span>
-                            {% elif faq.category == '保护措施' %}
+                            {% elif faq.category == '安全与管理' %}
                             <span class="badge badge-soft-success"><i class="bi bi-shield-check me-1"></i>{{ faq.category }}</span>
-                            {% else %}
+                            {% elif faq.category == '法律与继承' %}
                             <span class="badge badge-soft-info"><i class="bi bi-info-circle me-1"></i>{{ faq.category }}</span>
+                            {% else %}
+                            <span class="badge badge-soft-warning"><i class="bi bi-heart me-1"></i>{{ faq.category }}</span>
                             {% endif %}
                         </td>
                         <td>{{ faq.question }}</td>
@@ -473,9 +475,10 @@ table tbody tr td.answer-cell-wrapper {
                         <div class="col-md-6 mb-3">
                             <label class="form-label">分类 *</label>
                             <select class="form-select" name="category" required>
-                                <option value="基础概念">基础概念</option>
-                                <option value="保护措施">保护措施</option>
-                                <option value="法律问题">法律问题</option>
+                                <option value="概念与价值">概念与价值</option>
+                                <option value="安全与管理">安全与管理</option>
+                                <option value="法律与继承">法律与继承</option>
+                                <option value="伦理与隐私">伦理与隐私</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -516,9 +519,10 @@ table tbody tr td.answer-cell-wrapper {
                         <div class="col-md-6 mb-3">
                             <label class="form-label">分类</label>
                             <select class="form-select" name="category" id="editCategory" required>
-                                <option value="基础概念">基础概念</option>
-                                <option value="保护措施">保护措施</option>
-                                <option value="法律问题">法律问题</option>
+                                <option value="概念与价值">概念与价值</option>
+                                <option value="安全与管理">安全与管理</option>
+                                <option value="法律与继承">法律与继承</option>
+                                <option value="伦理与隐私">伦理与隐私</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">

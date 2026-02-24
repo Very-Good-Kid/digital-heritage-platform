@@ -91,13 +91,35 @@ class PlatformPolicy(db.Model):
     attitude = db.Column(db.String(50), nullable=False)  # 明确禁止、态度模糊、有限支持、主动服务
     inherit_possibility = db.Column(db.String(10), nullable=False)  # 低、中、高
     legal_basis = db.Column(db.Text)
-    customer_service = db.Column(db.String(200))
+    customer_service = db.Column(db.String(500))  # 扩展长度以支持多个联系方式
     risk_warning = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=get_china_time)
+    updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)
+    
+    # 关联政策条款详情
+    policy_details = db.relationship('PolicyDetail', backref='platform', lazy='dynamic', 
+                                     cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<PlatformPolicy {self.platform_name}>'
+
+
+class PolicyDetail(db.Model):
+    """政策条款详情模型 - 用于存储二、主流平台相关政策收集的内容"""
+    __tablename__ = 'policy_details'
+
+    id = db.Column(db.Integer, primary_key=True)
+    platform_policy_id = db.Column(db.Integer, db.ForeignKey('platform_policies.id'), nullable=False)
+    policy_title = db.Column(db.String(200), nullable=False)  # 政策条款标题
+    policy_text = db.Column(db.Text, nullable=False)  # 政策条款原文
+    legal_interpretation = db.Column(db.Text)  # 法律解读
+    display_order = db.Column(db.Integer, default=0)  # 显示顺序
     created_at = db.Column(db.DateTime, default=get_china_time)
     updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)
 
     def __repr__(self):
-        return f'<PlatformPolicy {self.platform_name}>'
+        return f'<PolicyDetail {self.policy_title}>'
+
 
 class Story(db.Model):
     """故事模型"""

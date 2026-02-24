@@ -450,7 +450,9 @@ def api_policies():
         'policy_content': policy.policy_content,
         'attitude': policy.attitude,
         'inherit_possibility': policy.inherit_possibility,
-        'customer_service': policy.customer_service
+        'customer_service': policy.customer_service,
+        'legal_basis': policy.legal_basis,
+        'risk_warning': policy.risk_warning
     } for policy in policies]
     return jsonify(data)
 
@@ -477,6 +479,119 @@ def api_update_policy(policy_id):
 def api_delete_policy(policy_id):
     """删除平台政策API"""
     return content_crud.delete_policy(policy_id)
+
+
+# ============================================================================
+# 政策条款详情管理API
+# ============================================================================
+
+@admin_bp.route('/api/content/policies/<int:policy_id>/details', methods=['GET'])
+@csrf_exempt
+@admin_required
+def api_policy_details(policy_id):
+    """获取平台政策的条款详情列表"""
+    from models import PlatformPolicy, PolicyDetail
+    policy = PlatformPolicy.query.get(policy_id)
+    if not policy:
+        return jsonify({'success': False, 'message': '政策不存在'}), 404
+    
+    details = PolicyDetail.query.filter_by(platform_policy_id=policy_id).order_by(PolicyDetail.display_order).all()
+    return jsonify({
+        'platform_name': policy.platform_name,
+        'details': [{
+            'id': d.id,
+            'policy_title': d.policy_title,
+            'policy_text': d.policy_text,
+            'legal_interpretation': d.legal_interpretation,
+            'display_order': d.display_order
+        } for d in details]
+    })
+
+
+@admin_bp.route('/api/content/policy-details/<int:detail_id>', methods=['GET'])
+@csrf_exempt
+@admin_required
+def api_get_policy_detail(detail_id):
+    """获取单个政策条款详情"""
+    from models import PolicyDetail
+    detail = PolicyDetail.query.get(detail_id)
+    if not detail:
+        return jsonify({'success': False, 'message': '条款不存在'}), 404
+    
+    return jsonify({
+        'id': detail.id,
+        'platform_policy_id': detail.platform_policy_id,
+        'policy_title': detail.policy_title,
+        'policy_text': detail.policy_text,
+        'legal_interpretation': detail.legal_interpretation,
+        'display_order': detail.display_order
+    })
+
+
+@admin_bp.route('/api/content/policy-details', methods=['POST'])
+@csrf_exempt
+@admin_required
+def api_create_policy_detail():
+    """创建政策条款详情"""
+    from models import PolicyDetail
+    data = request.json
+    
+    try:
+        detail = PolicyDetail(
+            platform_policy_id=data.get('platform_policy_id'),
+            policy_title=data.get('policy_title'),
+            policy_text=data.get('policy_text'),
+            legal_interpretation=data.get('legal_interpretation'),
+            display_order=data.get('display_order', 0)
+        )
+        db.session.add(detail)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '政策条款创建成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'创建失败: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/content/policy-details/<int:detail_id>', methods=['PUT', 'PATCH'])
+@csrf_exempt
+@admin_required
+def api_update_policy_detail(detail_id):
+    """更新政策条款详情"""
+    from models import PolicyDetail
+    detail = PolicyDetail.query.get(detail_id)
+    if not detail:
+        return jsonify({'success': False, 'message': '条款不存在'}), 404
+    
+    data = request.json
+    try:
+        detail.policy_title = data.get('policy_title', detail.policy_title)
+        detail.policy_text = data.get('policy_text', detail.policy_text)
+        detail.legal_interpretation = data.get('legal_interpretation', detail.legal_interpretation)
+        detail.display_order = data.get('display_order', detail.display_order)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '政策条款更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/content/policy-details/<int:detail_id>', methods=['DELETE'])
+@csrf_exempt
+@admin_required
+def api_delete_policy_detail(detail_id):
+    """删除政策条款详情"""
+    from models import PolicyDetail
+    detail = PolicyDetail.query.get(detail_id)
+    if not detail:
+        return jsonify({'success': False, 'message': '条款不存在'}), 404
+    
+    try:
+        db.session.delete(detail)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '政策条款删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'删除失败: {str(e)}'}), 500
 
 
 @admin_bp.route('/content/faqs')
