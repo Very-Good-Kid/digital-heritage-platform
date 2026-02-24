@@ -65,15 +65,9 @@ async function syncFAQ() {
     resultDiv.style.display = 'none';
 
     try {
-        const response = await fetch('/admin/sync/faq', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin'
+        const data = await apiCall('/admin/sync/faq', {
+            method: 'POST'
         });
-
-        const data = await response.json();
 
         // 显示结果
         resultDiv.style.display = 'block';

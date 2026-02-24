@@ -10,24 +10,33 @@
 
 通过Web界面同步FAQ数据（推荐方式）
 
-### 步骤1: 部署到Render
+### 步骤1: 导出本地FAQ数据
 
-1. 将代码推送到GitHub
+```bash
+cd "c:/Users/admin/Desktop/demo - codebuddy"
+python sync_faq.py
+```
+
+这将生成 `faq_export_YYYYMMDD_HHMMSS.json` 文件。
+
+### 步骤2: 部署到Render
+
+1. 将代码和FAQ导出文件一起推送到GitHub
 2. Render会自动部署
 3. 部署完成后，访问你的应用
 
-### 步骤2: 访问数据同步页面
+### 步骤3: 访问数据同步页面
 
 1. 登录管理员账户
 2. 访问: `https://你的应用名.onrender.com/admin/sync`
 
-### 步骤3: 执行同步
+### 步骤4: 执行同步
 
 1. 点击"同步FAQ数据"按钮
 2. 等待同步完成
 3. 查看同步结果
 
-### 步骤4: 验证数据
+### 步骤5: 验证数据
 
 访问 `https://你的应用名.onrender.com/faq` 查看FAQ数据是否已同步
 
@@ -35,7 +44,7 @@
 
 1. **管理员权限**: 只有管理员账户可以访问数据同步功能
 2. **数据覆盖**: 同步会覆盖相同ID的FAQ记录
-3. **网络要求**: 需要能访问Render应用的网络环境
+3. **文件要求**: 需要将FAQ导出的JSON文件部署到Render
 4. **CSRF保护**: 同步端点已配置CSRF保护
 
 ## 本地数据管理
@@ -64,12 +73,20 @@ with app.app_context():
 
 ## 更新同步数据
 
-如果需要更新同步的FAQ数据：
+### 方法1: 修改本地数据后重新导出
 
 1. 在本地修改FAQ数据（通过后台管理或直接操作数据库）
-2. 更新 `admin/views.py` 中的 `FAQ_DATA` 列表
-3. 重新部署到Render
-4. 访问 `/admin/sync` 页面执行同步
+2. 运行 `python sync_faq.py` 重新导出
+3. 将JSON文件推送到GitHub
+4. 重新部署到Render
+5. 访问 `/admin/sync` 页面执行同步
+
+### 方法2: 直接修改JSON文件
+
+1. 编辑 `faq_export_*.json` 文件
+2. 推送到GitHub
+3. 重新部署
+4. 执行同步
 
 ## 常见问题
 
@@ -88,6 +105,11 @@ A: 建议在同步前：
 2. 在测试环境先验证
 3. 确认数据正确后再执行同步
 
+### Q: 找不到FAQ导出文件怎么办？
+
+A: 确保在部署前运行了 `python sync_faq.py`，并将生成的JSON文件一起提交到Git。
+
 ### Q: 可以同步其他数据吗？
 
 A: 目前只支持FAQ数据同步。如需同步其他数据（用户、资产、遗嘱等），需要额外开发对应的同步端点。
+

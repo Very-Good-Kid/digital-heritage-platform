@@ -1,6 +1,28 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
+
+# 自定义CSRF保护类，支持通过属性豁免
+class CustomCSRFProtect(CSRFProtect):
+    def protect(self):
+        if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
+            # 检查是否有豁免标记
+            if getattr(request, '_csrf_exempt', False):
+                return
+
+            # 检查视图函数是否有豁免属性
+            view_func = self._get_view()
+            if view_func and getattr(view_func, 'csrf_exempt', False):
+                return
+
+        return super().protect()
+
+    def _get_view(self):
+        """获取当前请求的视图函数"""
+        endpoint = request.endpoint
+        if endpoint:
+            return self.app.view_functions.get(endpoint)
+        return None
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, timezone
 import os
@@ -59,8 +81,10 @@ def setup_fonts_on_startup():
         print(f"[WARN] Font setup failed: {e}")
         print("[INFO] Application will continue with default fonts")
 
-# 初始化CSRF保护
-csrf = CSRFProtect(app)
+# 初始化CSRF保护（使用自定义类支持属性豁免）
+csrf = CustomCSRFProtect(app)
+
+
 
 # 初始化扩展
 db.init_app(app)

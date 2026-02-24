@@ -3,13 +3,14 @@
 """
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import login_required, current_user
-# 自定义 csrf_exempt 装饰器
-def csrf_exempt(view_func):
-    """标记视图函数免除 CSRF 保护"""
-    view_func.csrf_exempt = True
-    return view_func
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
+
+# 自定义 csrf_exempt 装饰器
+def csrf_exempt(view_func):
+    """豁免CSRF保护的装饰器"""
+    view_func.csrf_exempt = True
+    return view_func
 
 from models import db, User, DigitalAsset, DigitalWill, PlatformPolicy, Story, FAQ
 from .decorators import admin_required
@@ -757,17 +758,28 @@ def sync_faq():
     """同步FAQ数据"""
     import json
     import os
+    import sys
 
     try:
+        # 打印调试信息
+        print(f"[FAQ同步] 开始同步FAQ数据")
+        print(f"[FAQ同步] 当前目录: {os.getcwd()}")
+
         # 从JSON文件读取FAQ数据
         faq_json_path = os.path.join(os.path.dirname(__file__), '..', 'faq_export_20260224_195547.json')
+        print(f"[FAQ同步] 尝试读取: {faq_json_path}")
 
         if not os.path.exists(faq_json_path):
             # 如果找不到特定文件，尝试找最新的导出文件
             import glob
-            faq_files = glob.glob(os.path.join(os.path.dirname(__file__), '..', 'faq_export_*.json'))
+            search_dir = os.path.join(os.path.dirname(__file__), '..')
+            faq_files = glob.glob(os.path.join(search_dir, 'faq_export_*.json'))
+            print(f"[FAQ同步] 搜索目录: {search_dir}")
+            print(f"[FAQ同步] 找到文件: {faq_files}")
+
             if faq_files:
                 faq_json_path = max(faq_files, key=os.path.getctime)
+                print(f"[FAQ同步] 使用文件: {faq_json_path}")
             else:
                 return jsonify({
                     'success': False,
@@ -778,6 +790,7 @@ def sync_faq():
             data = json.load(f)
 
         FAQ_DATA = data.get('faqs', [])
+        print(f"[FAQ同步] 读取到 {len(FAQ_DATA)} 条FAQ数据")
 
         imported_count = 0
         updated_count = 0
