@@ -60,15 +60,15 @@
                         <td>{{ asset.platform_name }}</td>
                         <td>{{ asset.account }}</td>
                         <td>
-                            {% if asset.category == '社交' %}
-                            <span class="badge badge-soft-primary"><i class="bi bi-people-fill me-1"></i>社交</span>
-                            {% elif asset.category == '金融' %}
-                            <span class="badge badge-soft-success"><i class="bi bi-bank2 me-1"></i>金融</span>
-                            {% elif asset.category == '记忆' %}
-                            <span class="badge badge-soft-info"><i class="bi bi-images me-1"></i>记忆</span>
-                            {% else %}
-                            <span class="badge badge-soft-warning"><i class="bi bi-gem me-1"></i>虚拟财产</span>
-                            {% endif %}
+                            {% set category_badge = {
+                                '社交媒体': ('badge-soft-primary', 'bi-people-fill'),
+                                '电子邮箱': ('badge-soft-info', 'bi-envelope-fill'),
+                                '云存储与数字内容': ('badge-soft-secondary', 'bi-cloud-fill'),
+                                '虚拟资产与数字货币': ('badge-soft-warning', 'bi-coin'),
+                                '其他数字资产': ('badge-soft-success', 'bi-box-seam')
+                            } %}
+                            {% set badge_class, icon = category_badge.get(asset.category, ('badge-soft-warning', 'bi-gem')) %}
+                            <span class="badge {{ badge_class }}"><i class="bi {{ icon }} me-1"></i>{{ asset.category }}</span>
                         </td>
                         <td>{{ asset.notes[:20] if asset.notes else '-' }}</td>
                         <td>{{ asset.created_at.strftime('%Y-%m-%d') }}</td>

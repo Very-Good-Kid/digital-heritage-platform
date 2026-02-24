@@ -265,7 +265,10 @@ def assets():
         page=page, per_page=per_page, error_out=False
     )
 
-    categories = ['社交媒体', '电子邮箱', '云存储与数字内容', '虚拟资产与数字货币', '其他数字资产']
+    # 从数据库动态获取分类列表
+    from sqlalchemy import distinct
+    categories = [c[0] for c in db.session.query(distinct(DigitalAsset.category)).order_by(DigitalAsset.category).all()]
+
     return render_template('admin/assets.html', pagination=pagination, search=search, category=category, categories=categories)
 
 

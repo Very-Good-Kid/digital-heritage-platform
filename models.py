@@ -53,13 +53,13 @@ class DigitalAsset(db.Model):
     __tablename__ = 'digital_assets'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     platform_name = db.Column(db.String(100), nullable=False)
     account = db.Column(db.String(200), nullable=False)
     encrypted_password = db.Column(db.Text)
-    category = db.Column(db.String(50), nullable=False)  # 社交媒体、电子邮箱、云存储与数字内容、虚拟资产与数字货币、其他数字资产
+    category = db.Column(db.String(50), nullable=False, index=True)  # 社交媒体、电子邮箱、云存储与数字内容、虚拟资产与数字货币、其他数字资产
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=get_china_time)
+    created_at = db.Column(db.DateTime, default=get_china_time, index=True)
     updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)
 
     def __repr__(self):
@@ -70,12 +70,12 @@ class DigitalWill(db.Model):
     __tablename__ = 'digital_wills'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     assets_data = db.Column(db.JSON)  # 存储资产处理选项
     status = db.Column(db.String(20), default='draft')  # draft, confirmed, archived
-    created_at = db.Column(db.DateTime, default=get_china_time)
+    created_at = db.Column(db.DateTime, default=get_china_time, index=True)
     updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)
 
     def __repr__(self):

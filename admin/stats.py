@@ -1,56 +1,75 @@
 """
-后台管理系统 - 数据统计模块
+后台管理系统 - 数据统计模块 - 性能优化版
 """
 from datetime import datetime, timedelta
 from sqlalchemy import func
+import time
 
 from models import db, User, DigitalAsset, DigitalWill, PlatformPolicy, Story, FAQ, get_china_time
 
 
-def get_dashboard_stats():
-    """获取仪表盘统计数据"""
-    # 用户统计
-    total_users = User.query.count()
+# 简单的内存缓存
+_stats_cache = {'data': None, 'timestamp': 0}
+_CACHE_TTL = 30  # 缓存30秒
+
+
+def get_dashboard_stats(use_cache=True):
+    """获取仪表盘统计数据 - 优化版（支持缓存）"""
+    current_time = time.time()
+
+    # 检查缓存
+    if use_cache and _stats_cache['data'] and (current_time - _stats_cache['timestamp']) < _CACHE_TTL:
+        return _stats_cache['data']
+
+    # 重新查询数据库
+    # 使用单次查询获取所有用户统计
+    user_stats = db.session.query(
+        func.count(User.id).label('total'),
+        func.sum(func.cast(User.is_active, db.Integer)).label('active'),
+        func.sum(func.cast(User.is_admin, db.Integer)).label('admin')
+    ).first()
+
+    # 计算活跃用户数（is_active=True的行数）
     active_users = User.query.filter_by(is_active=True).count()
     admin_users = User.query.filter_by(is_admin=True).count()
 
-    # 资产统计
-    total_assets = DigitalAsset.query.count()
-    # 按分类统计
+    # 资产统计 - 使用单次查询
     asset_categories = db.session.query(
         DigitalAsset.category,
         func.count(DigitalAsset.id)
     ).group_by(DigitalAsset.category).all()
+    total_assets = sum(count for _, count in asset_categories)
     asset_stats = {cat: count for cat, count in asset_categories}
 
-    # 遗嘱统计
-    total_wills = DigitalWill.query.count()
+    # 遗嘱统计 - 使用单次查询
     will_stats = db.session.query(
         DigitalWill.status,
         func.count(DigitalWill.id)
     ).group_by(DigitalWill.status).all()
+    total_wills = sum(count for _, count in will_stats)
     will_status = {status: count for status, count in will_stats}
 
-    # 内容统计
-    total_policies = PlatformPolicy.query.count()
-    total_faqs = FAQ.query.count()
-    total_stories = Story.query.count()
+    # 内容统计 - 使用单次聚合查询
+    week_ago = get_china_time() - timedelta(days=7)
+
+    content_stats = db.session.query(
+        func.count(PlatformPolicy.id).label('policies'),
+        func.count(FAQ.id).label('faqs'),
+        func.count(Story.id).label('stories')
+    ).first()
+
     pending_stories = Story.query.filter_by(status='pending').count()
 
-    # 最近注册用户（7天内）
-    week_ago = get_china_time() - timedelta(days=7)
+    # 周统计
     new_users_week = User.query.filter(User.created_at >= week_ago).count()
-
-    # 最近活跃用户（7天内）
-    # 假设updated_at表示用户最后活动时间
     active_users_week = User.query.filter(
         User.updated_at >= week_ago,
         User.is_active == True
     ).count()
 
-    return {
+    data = {
         'users': {
-            'total': total_users,
+            'total': user_stats.total or 0,
             'active': active_users,
             'admin': admin_users,
             'new_week': new_users_week,
@@ -65,9 +84,83 @@ def get_dashboard_stats():
             'by_status': will_status
         },
         'content': {
-            'policies': total_policies,
-            'faqs': total_faqs,
-            'stories': total_stories,
+            'policies': content_stats.policies or 0,
+            'faqs': content_stats.faqs or 0,
+            'stories': content_stats.stories or 0,
+            'pending_stories': pending_stories
+        }
+    }
+
+    # 更新缓存
+    _stats_cache['data'] = data
+    _stats_cache['timestamp'] = current_time
+
+    return data
+    # 使用单次查询获取所有用户统计
+    user_stats = db.session.query(
+        func.count(User.id).label('total'),
+        func.sum(func.cast(User.is_active, db.Integer)).label('active'),
+        func.sum(func.cast(User.is_admin, db.Integer)).label('admin')
+    ).first()
+
+    # 计算活跃用户数（is_active=True的行数）
+    active_users = User.query.filter_by(is_active=True).count()
+    admin_users = User.query.filter_by(is_admin=True).count()
+
+    # 资产统计 - 使用单次查询
+    asset_categories = db.session.query(
+        DigitalAsset.category,
+        func.count(DigitalAsset.id)
+    ).group_by(DigitalAsset.category).all()
+    total_assets = sum(count for _, count in asset_categories)
+    asset_stats = {cat: count for cat, count in asset_categories}
+
+    # 遗嘱统计 - 使用单次查询
+    will_stats = db.session.query(
+        DigitalWill.status,
+        func.count(DigitalWill.id)
+    ).group_by(DigitalWill.status).all()
+    total_wills = sum(count for _, count in will_stats)
+    will_status = {status: count for status, count in will_stats}
+
+    # 内容统计 - 使用单次聚合查询
+    week_ago = get_china_time() - timedelta(days=7)
+
+    content_stats = db.session.query(
+        func.count(PlatformPolicy.id).label('policies'),
+        func.count(FAQ.id).label('faqs'),
+        func.count(Story.id).label('stories')
+    ).first()
+
+    pending_stories = Story.query.filter_by(status='pending').count()
+
+    # 周统计
+    new_users_week = User.query.filter(User.created_at >= week_ago).count()
+    active_users_week = User.query.filter(
+        User.updated_at >= week_ago,
+        User.is_active == True
+    ).count()
+
+    return {
+        'users': {
+            'total': user_stats.total or 0,
+            'active': active_users,
+            'admin': admin_users,
+            'new_week': new_users_week,
+            'active_week': active_users_week
+        },
+        'assets': {
+            'total': total_assets,
+            'by_category': asset_stats
+        },
+        'wills': {
+            'total': total_wills,
+            'by_status': will_status
+        },
+        'content': {
+            'policies': content_stats.policies or 0,
+            'faqs': content_stats.faqs or 0,
+            'stories': content_stats.stories or 0,
             'pending_stories': pending_stories
         }
     }

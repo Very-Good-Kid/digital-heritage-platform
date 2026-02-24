@@ -15,8 +15,8 @@
     </div>
 </div>
 
-<!-- Stats Cards -->
-<div class="row g-4 mb-4">
+<!-- Stats Cards - 优化的响应式布局 -->
+<div class="row g-3 mb-4">
     <div class="col-12">
         <div class="alert alert-info d-flex align-items-center">
             <i class="bi bi-info-circle fs-4 me-3"></i>
@@ -27,30 +27,32 @@
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
-        <div class="card stat-card bg-gradient-primary position-relative">
+<div class="row g-3 mb-4">
+    <!-- 总用户数 -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card bg-gradient-primary position-relative" style="min-height: 130px;">
             <div class="card-header">
                 <i class="bi bi-people me-2"></i>总用户数
             </div>
             <div class="card-body">
-                <div class="stat-value" id="total-users">-</div>
-                <div class="stat-label">
-                    <span class="me-3">活跃: <strong id="active-users">-</strong></span>
-                    <span>管理员: <strong id="admin-users">-</strong></span>
+                <div class="stat-value skeleton" id="total-users">-</div>
+                <div class="stat-label d-flex justify-content-between">
+                    <span>活跃: <strong class="skeleton" id="active-users">-</strong></span>
+                    <span>管理员: <strong class="skeleton" id="admin-users">-</strong></span>
                 </div>
                 <i class="bi bi-people stat-icon"></i>
             </div>
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6">
-        <div class="card stat-card bg-gradient-success position-relative">
+    <!-- 数字资产 -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card bg-gradient-success position-relative" style="min-height: 130px;">
             <div class="card-header">
                 <i class="bi bi-collection me-2"></i>数字资产
             </div>
             <div class="card-body">
-                <div class="stat-value" id="total-assets">-</div>
+                <div class="stat-value skeleton" id="total-assets">-</div>
                 <div class="stat-label" id="assets-categories-label">
                     <span class="text-muted">加载中...</span>
                 </div>
@@ -59,32 +61,34 @@
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6">
-        <div class="card stat-card bg-gradient-info position-relative">
+    <!-- 数字遗嘱 -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card bg-gradient-info position-relative" style="min-height: 130px;">
             <div class="card-header">
                 <i class="bi bi-file-text me-2"></i>数字遗嘱
             </div>
             <div class="card-body">
-                <div class="stat-value" id="total-wills">-</div>
-                <div class="stat-label">
-                    草稿: <strong id="wills-draft">-</strong> |
-                    已确认: <strong id="wills-confirmed">-</strong>
+                <div class="stat-value skeleton" id="total-wills">-</div>
+                <div class="stat-label d-flex justify-content-between">
+                    <span>草稿: <strong class="skeleton" id="wills-draft">-</strong></span>
+                    <span>已确认: <strong class="skeleton" id="wills-confirmed">-</strong></span>
                 </div>
                 <i class="bi bi-file-text stat-icon"></i>
             </div>
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6">
-        <div class="card stat-card bg-gradient-warning position-relative">
+    <!-- 内容总数 -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card bg-gradient-warning position-relative" style="min-height: 130px;">
             <div class="card-header">
                 <i class="bi bi-chat-quote me-2"></i>内容总数
             </div>
             <div class="card-body">
-                <div class="stat-value" id="total-content">-</div>
-                <div class="stat-label">
-                    FAQ: <strong id="total-faqs">-</strong> |
-                    故事: <strong id="total-stories">-</strong>
+                <div class="stat-value skeleton" id="total-content">-</div>
+                <div class="stat-label d-flex justify-content-between">
+                    <span>FAQ: <strong class="skeleton" id="total-faqs">-</strong></span>
+                    <span>故事: <strong class="skeleton" id="total-stories">-</strong></span>
                 </div>
                 <i class="bi bi-chat-quote stat-icon"></i>
             </div>
@@ -199,31 +203,36 @@
 {% block scripts %}
 <script>
 let growthChart, categoryChart, activityChart;
+let chartsLoaded = false;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // 先显示卡片数据
     loadDashboardData();
+
+    // 延迟加载图表，提升首屏性能
+    setTimeout(loadChartsLazy, 300);
 });
 
 async function loadDashboardData() {
-    showLoading();
     try {
         const result = await apiCall('/admin/api/stats');
 
         if (result.success) {
             updateStats(result);
-            await loadCharts();
         }
     } catch (error) {
         console.error('加载仪表盘数据失败:', error);
-        alert('加载数据失败，请稍后重试');
-    } finally {
-        hideLoading();
     }
 }
 
 function updateStats(data) {
     console.log('更新统计数据:', data);
     const { users, assets, wills, content } = data;
+
+    // 移除骨架屏效果
+    document.querySelectorAll('.skeleton').forEach(el => {
+        el.classList.remove('skeleton');
+    });
 
     // Users
     document.getElementById('total-users').textContent = formatNumber(users.total);
@@ -275,10 +284,34 @@ function updateStats(data) {
     document.getElementById('inactive-users').textContent = users.total - users.active;
 }
 
+function loadChartsLazy() {
+    // 使用 IntersectionObserver 实现懒加载
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !chartsLoaded) {
+                chartsLoaded = true;
+                loadCharts();
+                observer.disconnect();
+            }
+        });
+    }, { threshold: 0.1 });
+
+    const chartsContainer = document.querySelector('.row.g-4.mb-4:nth-child(3)');
+    if (chartsContainer) {
+        observer.observe(chartsContainer);
+    } else {
+        // 如果找不到容器，延迟加载
+        setTimeout(loadCharts, 500);
+    }
+}
+
 async function loadCharts() {
-    await loadGrowthChart();
-    await loadCategoryChart();
-    await loadActivityChart();
+    // 并行加载三个图表
+    await Promise.all([
+        loadGrowthChart(),
+        loadCategoryChart(),
+        loadActivityChart()
+    ]);
 }
 
 async function loadGrowthChart() {
