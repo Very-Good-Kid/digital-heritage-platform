@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+
+{% block title %}数据同步 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">数据同步</h1>
+        <p class="page-subtitle">从本地数据同步到生产环境</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>FAQ数据同步</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>说明：</strong>此功能将本地SQLite数据库中的FAQ数据同步到生产环境的PostgreSQL数据库。
+                </div>
+
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>警告：</strong>此操作会覆盖相同ID的FAQ记录，请谨慎操作。
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <button id="sync-btn" class="btn btn-primary" onclick="syncFAQ()">
+                        <i class="bi bi-sync me-2"></i>
+                        同步FAQ数据
+                    </button>
+
+                    <div id="sync-status" class="text-muted">
+                        点击上方按钮开始同步
+                    </div>
+                </div>
+
+                <div id="sync-result" class="mt-4" style="display: none;">
+                    <div class="alert" id="result-alert">
+                        <h6 id="result-title"></h6>
+                        <div id="result-details"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function syncFAQ() {
+    const btn = document.getElementById('sync-btn');
+    const status = document.getElementById('sync-status');
+    const resultDiv = document.getElementById('sync-result');
+    const resultAlert = document.getElementById('result-alert');
+    const resultTitle = document.getElementById('result-title');
+    const resultDetails = document.getElementById('result-details');
+
+    // 禁用按钮
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>同步中...';
+    status.textContent = '正在同步FAQ数据...';
+    resultDiv.style.display = 'none';
+
+    try {
+        const response = await fetch('/admin/sync/faq', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+
+        // 显示结果
+        resultDiv.style.display = 'block';
+        resultDetails.innerHTML = `
+            <p><strong>新增：</strong>${data.imported || 0} 条</p>
+            <p><strong>更新：</strong>${data.updated || 0} 条</p>
+            <p><strong>总计：</strong>${data.total || 0} 条</p>
+        `;
+
+        if (data.success) {
+            resultAlert.className = 'alert alert-success';
+            resultTitle.innerHTML = '<i class="bi bi-check-circle me-2"></i>同步成功';
+            status.textContent = '同步完成！';
+            status.className = 'text-success';
+        } else {
+            resultAlert.className = 'alert alert-danger';
+            resultTitle.innerHTML = '<i class="bi bi-x-circle me-2"></i>同步失败';
+            resultDetails.innerHTML += `<p class="mb-0"><strong>错误信息：</strong>${data.message}</p>`;
+            status.textContent = '同步失败！';
+            status.className = 'text-danger';
+        }
+
+    } catch (error) {
+        console.error('同步失败:', error);
+        resultDiv.style.display = 'block';
+        resultAlert.className = 'alert alert-danger';
+        resultTitle.innerHTML = '<i class="bi bi-x-circle me-2"></i>同步失败';
+        resultDetails.innerHTML = `<p class="mb-0"><strong>错误信息：</strong>${error.message}</p>`;
+        status.textContent = '同步失败！';
+        status.className = 'text-danger';
+    } finally {
+        // 恢复按钮
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-sync me-2"></i>同步FAQ数据';
+    }
+}
+</script>
+{% endblock %}
