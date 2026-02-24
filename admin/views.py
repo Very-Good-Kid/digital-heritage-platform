@@ -755,17 +755,29 @@ def sync():
 @admin_required
 def sync_faq():
     """同步FAQ数据"""
+    import json
+    import os
+
     try:
-        # FAQ数据（从本地导出）
-        FAQ_DATA = [
-            {"id": 1, "question": "数字资产包括哪些内容？", "answer": "数字资产是指公民合法拥有或控制的、以数字化形式存在、具有经济或社会价值的信息资源。按属性可分为：<br><strong>（1）财产型：</strong>虚拟货币（比特币等）、数字人民币、支付宝/微信余额、游戏装备/账号、NFT、数字版权、数据资产；<br><strong>（2）人格型：</strong>社交账号、邮件、聊天记录、相册、个人文档；<br><strong>（3）混合型：</strong>兼具财产与人格属性（如带粉丝/流量的自媒体账号）。<br><br>【依据】《信息技术服务 数据资产管理要求》："数据资产"是指合法拥有或控制的、能进行计量的、为组织带来经济和社会价值的数据资源。", "category": "概念与价值", "order": 1},
-            {"id": 2, "question": "数字资产与传统资产有什么本质区别？", "answer": "<strong>（1）存在形式：</strong>无形、数字化、依赖平台/网络；传统遗产具有物理存在或明确的实物载体。<br><strong>（2）权属：</strong>部分仅享有使用权（如社交账号，所有权归平台）；传统遗产多为完整所有权。<br><strong>（3）继承规则：</strong>无专门细则，适用《民法典》原则+平台协议；传统遗产规则明确。<br><strong>（4）价值：</strong>兼具经济+人格价值；传统遗产多为单一经济价值。", "category": "概念与价值", "order": 2},
-            {"id": 3, "question": "为什么需要规划数字资产？", "answer": "<strong>（1）法律层面：</strong>数字资产属合法财产，需依法继承（《民法典》第1122条）。<br><strong>（2）实操层面：</strong>避免账号冻结、资产灭失、隐私泄露、继承纠纷。<br><strong>（3）价值层面：</strong>保护经济价值（余额、虚拟财产）与情感价值（回忆、隐私）。<br><br>【依据】《民法典》第127条："数据、网络虚拟财产受法律保护"。<br>《民法典》第1122条："遗产是自然人死亡时遗留的个人合法财产。依照法律规定或者根据其性质不得继承的遗产，不得继承。"", "category": "概念与价值", "order": 3},
-            {"id": 4, "question": "数字资产规划的最佳时间是什么时候？", "answer": "拥有重要数字资产时、重大人生节点（结婚、生子、立遗嘱）。", "category": "概念与价值", "order": 4},
-            {"id": 5, "question": "什么是数字遗嘱？", "answer": "以数字化形式订立、载明数字资产分配与处置意愿的遗嘱，包括电子遗嘱、区块链遗嘱、云存储遗嘱等。核心是明确数字资产范围、继承人、访问方式与隐私处置规则。", "category": "概念与价值", "order": 5},
-            {"id": 6, "question": "如何保护我的数字资产？", "answer": "<strong>(1)</strong>定期备份重要数据到本地或云端；<br><strong>(2)</strong>使用密码管理器安全存储密码；<br><strong>(3)</strong>创建数字遗嘱并定期更新；<br><strong>(4)</strong>告知家人重要账户信息；<br><strong>(5)</strong>了解各平台的继承政策；<br><strong>(6)</strong>启用双重认证；<br><strong>(7)</strong>定期检查账户安全设置。", "category": "安全与管理", "order": 1},
-            {"id": 7, "question": "密码安全应该注意什么？", "answer": "<strong>(1)</strong>使用强密码（大小写字母、数字、特殊符号组合，至少12位）；<br><strong>(2)</strong>不要重复使用密码；<br><strong>(3)</strong>定期更换密码（每3-6个月）；<br><strong>(4)</strong>启用两步验证；<br><strong>(5)</strong>使用密码管理器（如LastPass、1Password）；<br><strong>(6)</strong>不要在公共场所输入密码；<br><strong>(7)</strong>警惕钓鱼网站。<br><br>【依据】《个人信息保护法》第51条："个人信息处理者应当根据个人信息的处理目的、处理方式、个人信息的种类以及对个人权益的影响、可能存在的安全风险等，采取相应的加密、去标识化等安全技术措施，确保个人信息处理活动符合法律规定，并防止未经授权的访问以及个人信息泄露、篡改、丢失。"", "category": "安全与管理", "order": 2},
-        ]
+        # 从JSON文件读取FAQ数据
+        faq_json_path = os.path.join(os.path.dirname(__file__), '..', 'faq_export_20260224_195547.json')
+
+        if not os.path.exists(faq_json_path):
+            # 如果找不到特定文件，尝试找最新的导出文件
+            import glob
+            faq_files = glob.glob(os.path.join(os.path.dirname(__file__), '..', 'faq_export_*.json'))
+            if faq_files:
+                faq_json_path = max(faq_files, key=os.path.getctime)
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': '未找到FAQ导出文件，请先运行 sync_faq.py 导出数据'
+                }), 400
+
+        with open(faq_json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        FAQ_DATA = data.get('faqs', [])
 
         imported_count = 0
         updated_count = 0
@@ -809,6 +821,7 @@ def sync_faq():
             'success': False,
             'message': f'FAQ数据同步失败: {str(e)}'
         }), 500
+
 
 
 
