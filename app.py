@@ -111,6 +111,11 @@ def init_database_on_startup():
                 # 迁移旧的资产分类
                 migrate_asset_categories()
 
+            # 检查是否需要初始化FAQ数据
+            if FAQ.query.count() == 0:
+                print("[INFO] Initializing FAQ data...")
+                init_default_faqs()
+
             print("[OK] Database initialization complete")
         except Exception as e:
             print(f"[ERROR] Database initialization failed: {e}")
@@ -224,6 +229,113 @@ def init_default_policy_details():
     
     db.session.commit()
     print(f"[OK] Added {count} policy details")
+
+def init_default_faqs():
+    """初始化默认FAQ数据"""
+    faqs_data = [
+        FAQ(
+            question='数字遗产包括哪些内容？',
+            answer='数字遗产包括但不限于：社交媒体账号（微信、QQ、抖音等）、电子邮箱、云存储文件、虚拟货币、游戏账号、在线支付账户、博客文章、个人网站、数字相册、音视频文件等。',
+            category='概念与价值',
+            order=1
+        ),
+        FAQ(
+            question='什么是数字遗嘱？',
+            answer='数字遗嘱是指用户在生前制定的关于其数字资产如何处理的书面文件，包括账户信息、密码、处理方式等内容的详细说明。它可以指导继承人如何处理您的数字资产，避免账户丢失或数据永久消失。',
+            category='概念与价值',
+            order=2
+        ),
+        FAQ(
+            question='为什么需要规划数字遗产？',
+            answer='1. 避免重要数据永久丢失；2. 保护隐私和个人信息；3. 确保资产（如虚拟货币）不被浪费；4. 减轻家人的心理负担；5. 让数字记忆得以传承；6. 避免平台账户被自动删除。',
+            category='概念与价值',
+            order=3
+        ),
+        FAQ(
+            question='数字资产的价值如何评估？',
+            answer='数字资产的价值包括：经济价值（虚拟货币、游戏装备、付费内容等）、情感价值（照片、视频、聊天记录等）、实用价值（付费软件、云存储空间等）。建议定期整理和评估您的数字资产。',
+            category='概念与价值',
+            order=4
+        ),
+        FAQ(
+            question='如何保护我的数字遗产？',
+            answer='1. 定期备份重要数据到本地或云端；2. 使用密码管理器安全存储密码；3. 创建数字遗嘱并定期更新；4. 告知家人重要账户信息；5. 了解各平台的继承政策；6. 启用双重认证；7. 定期检查账户安全设置。',
+            category='安全与管理',
+            order=1
+        ),
+        FAQ(
+            question='密码安全应该注意什么？',
+            answer='1. 使用强密码（大小写字母、数字、特殊符号组合，至少12位）；2. 不要重复使用密码；3. 定期更换密码（每3-6个月）；4. 启用两步验证；5. 使用密码管理器（如LastPass、1Password）；6. 不要在公共场所输入密码；7. 警惕钓鱼网站。',
+            category='安全与管理',
+            order=2
+        ),
+        FAQ(
+            question='如何选择密码管理器？',
+            answer='选择密码管理器时考虑：1. 安全性（是否使用AES-256加密）；2. 跨平台支持（手机、电脑、浏览器）；3. 云同步功能；4. 价格（免费版功能）；5. 用户评价和口碑。推荐工具：LastPass、1Password、Bitwarden、KeePass等。',
+            category='安全与管理',
+            order=3
+        ),
+        FAQ(
+            question='数字遗嘱有法律效力吗？',
+            answer='数字遗嘱在我国法律体系中尚未明确认定，但可以作为表达意愿的重要依据。根据《民法典》，遗嘱可以采用多种形式，包括打印、录音录像等。数字遗嘱如果能证明是本人真实意愿，可能被参考。建议配合传统遗嘱使用，并咨询专业律师。',
+            category='法律与继承',
+            order=1
+        ),
+        FAQ(
+            question='继承人的法律权利是什么？',
+            answer='根据《民法典》，继承人有权继承被继承人的合法财产。但对于数字财产，法律界定尚不明确：1. 虚拟货币（比特币等）通常被视为财产，可以继承；2. 社交媒体账号（微信、QQ等）通常被视为使用权，不可继承；3. 游戏账号和虚拟道具的继承权取决于平台政策；4. 云存储文件可以继承，但需要密码或法律证明。',
+            category='法律与继承',
+            order=2
+        ),
+        FAQ(
+            question='如何证明数字资产的所有权？',
+            answer='证明数字资产所有权需要：1. 账户注册信息和登录记录；2. 交易记录和支付凭证（如购买虚拟货币的记录）；3. 电子邮件或聊天记录证明使用情况；4. 平台开具的资产证明；5. 公证处的公证文件；6. 银行流水证明充值记录。建议保留所有相关凭证。',
+            category='法律与继承',
+            order=3
+        ),
+        FAQ(
+            question='如果平台拒绝继承怎么办？',
+            answer='1. 查阅平台服务协议，了解具体条款；2. 准备完整的法律文件（死亡证明、继承公证书等）；3. 联系平台客服，说明情况；4. 寻求法律援助，向法院提起诉讼；5. 向消费者协会投诉；6. 通过媒体曝光引起关注。注意：不同平台处理方式不同，需要具体情况具体分析。',
+            category='法律与继承',
+            order=4
+        ),
+        FAQ(
+            question='社交账号能否被作为遗产继承？',
+            answer='不能。社交账号具有强烈的人身依附性，其使用权基于用户与平台的合同关系，不属于《民法典》第1122条规定的"遗产"范畴。但如今司法实践中有账号本身不能继承，但账号内的数据内容可以继承的判决倾向。法条依据：《民法典》第1122条："遗产是自然人死亡时遗留的个人合法财产。依照法律规定或者根据其性质不得继承的遗产，不得继承。"',
+            category='法律与继承',
+            order=5
+        ),
+        FAQ(
+            question='游戏装备、虚拟货币等数字财产如何继承？',
+            answer='可以继承，但是受平台用户协议限制。虚拟财产的继承需要平台配合，而平台常以"保护账号安全"为由拒绝。实务中游戏账号的充值余额、已购买未使用消耗的虚拟道具等可以明确估值的财产往往被认为可以继承，而游戏中的成就或其他有关人身性的财产被认定为不可继承。法条依据：《民法典》第127条："法律对数据、网络虚拟财产的保护有规定的，依照其规定。"确认虚拟财产受法律保护；第1122条将其纳入遗产范围。',
+            category='法律与继承',
+            order=6
+        ),
+        FAQ(
+            question='电子邮件、聊天记录等内容是否能被继承人查阅？',
+            answer='针对这类隐私性较强的财产应当区分对待。涉及到财产的邮件等应该能够依法被查阅（如银行账单、合同等）涉及到被继承人个人隐私的聊天记录与邮件内容则不能被查阅，除非被继承人同意。法条依据：《个人信息保护法》第49条："自然人死亡的，其近亲属为了自身的合法、正当利益，可以对死者的相关个人信息行使本章规定的查阅、复制、更正、删除等权利；死者生前另有安排的除外。"',
+            category='伦理与隐私',
+            order=1
+        ),
+        FAQ(
+            question='如何保护逝者的隐私？',
+            answer='1. 尊重逝者生前意愿；2. 不随意公开逝者的私人信息；3. 谨慎处理敏感内容；4. 遵守相关法律法规；5. 与家人协商处理方式；6. 必要时寻求专业法律建议。保护逝者隐私是对逝者的尊重，也是法律要求。',
+            category='伦理与隐私',
+            order=2
+        ),
+        FAQ(
+            question='数字遗产继承中的伦理问题有哪些？',
+            answer='1. 隐私与知情权的平衡；2. 逝者意愿与继承人利益的冲突；3. 数字身份的处理方式；4. 社交媒体纪念账号的管理；5. 敏感内容的处理；6. 家人之间的协商机制。建议在生前就这些问题做出明确安排。',
+            category='伦理与隐私',
+            order=3
+        )
+    ]
+
+    for faq in faqs_data:
+        db.session.add(faq)
+
+    db.session.commit()
+    print(f"[OK] Added {len(faqs_data)} FAQs")
 
 # 在应用启动时执行初始化
 init_database_on_startup()
@@ -1276,26 +1388,13 @@ def policies():
 # 路由：身后继承（整合平台政策和继承导航）
 @app.route('/inheritance')
 def inheritance():
-    """身后继承 - 整合平台政策矩阵和继承导航"""
-    from models import PolicyDetail
-    policies = PlatformPolicy.query.order_by(PlatformPolicy.platform_name).all()
-    platforms = PlatformPolicy.query.filter(PlatformPolicy.platform_name.in_(['微信', 'QQ', '抖音'])).all()
-    
-    # 预加载政策详情
-    policies_with_details = []
-    for policy in policies:
-        details = PolicyDetail.query.filter_by(platform_policy_id=policy.id).order_by(PolicyDetail.display_order).all()
-        policies_with_details.append({
-            'policy': policy,
-            'details': details
-        })
-    
+    """身后继承 - 整合平台政策矩阵和继承导航（静态版本）"""
     scenarios = [
         {'id': 'scenario1', 'name': '有遗嘱+有密码', 'description': '您拥有合法的数字遗嘱和账户密码'},
         {'id': 'scenario2', 'name': '有遗嘱+无密码', 'description': '您拥有合法的数字遗嘱但没有账户密码'},
         {'id': 'scenario3', 'name': '无遗嘱+无密码', 'description': '您没有数字遗嘱和账户密码'}
     ]
-    return render_template('inheritance/index.html', policies=policies, policies_with_details=policies_with_details, platforms=platforms, scenarios=scenarios)
+    return render_template('inheritance/index.html', scenarios=scenarios)
 
 # 路由：继承导航
 @app.route('/inheritance-guide', methods=['GET', 'POST'])
