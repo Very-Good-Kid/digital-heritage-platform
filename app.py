@@ -108,6 +108,9 @@ def init_database_on_startup():
                 print("[INFO] Initializing policy details...")
                 init_default_policy_details()
                 
+                # 迁移旧的资产分类
+                migrate_asset_categories()
+
             print("[OK] Database initialization complete")
         except Exception as e:
             print(f"[ERROR] Database initialization failed: {e}")
@@ -152,6 +155,29 @@ def init_default_policies():
     
     db.session.commit()
     print(f"[OK] Added {len(policies_data)} platform policies")
+
+
+def migrate_asset_categories():
+    """迁移旧的资产分类到新分类"""
+    category_mapping = {
+        '社交': '社交媒体',
+        '金融': '电子邮箱',
+        '记忆': '云存储与数字内容',
+        '虚拟财产': '虚拟资产与数字货币'
+    }
+
+    updated_count = 0
+    for old_cat, new_cat in category_mapping.items():
+        assets = DigitalAsset.query.filter_by(category=old_cat).all()
+        if assets:
+            print(f"[INFO] Migrating {old_cat} -> {new_cat}: {len(assets)} assets")
+            for asset in assets:
+                asset.category = new_cat
+            db.session.commit()
+            updated_count += len(assets)
+
+    if updated_count > 0:
+        print(f"[OK] Migrated {updated_count} asset categories")
 
 def init_default_policy_details():
     """初始化默认政策条款详情数据"""

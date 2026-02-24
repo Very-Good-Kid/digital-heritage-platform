@@ -41,8 +41,8 @@
             <div class="card-body">
                 <div class="stat-value" id="total-assets">-</div>
                 <div class="stat-label">
-                    社交: <strong id="assets-social">-</strong> |
-                    金融: <strong id="assets-finance">-</strong>
+                    社交媒体: <strong id="assets-social">-</strong> |
+                    电子邮箱: <strong id="assets-finance">-</strong>
                 </div>
                 <i class="bi bi-collection stat-icon"></i>
             </div>
@@ -218,8 +218,8 @@ function updateStats(data) {
 
     // Assets
     document.getElementById('total-assets').textContent = formatNumber(assets.total);
-    document.getElementById('assets-social').textContent = formatNumber(assets.by_category['社交'] || 0);
-    document.getElementById('assets-finance').textContent = formatNumber(assets.by_category['金融'] || 0);
+    document.getElementById('assets-social').textContent = formatNumber(assets.by_category['社交媒体'] || 0);
+    document.getElementById('assets-finance').textContent = formatNumber(assets.by_category['电子邮箱'] || 0);
 
     // Wills
     document.getElementById('total-wills').textContent = formatNumber(wills.total);

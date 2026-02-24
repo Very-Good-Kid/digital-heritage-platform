@@ -51,9 +51,8 @@
             </div>
             <div class="card-body">
                 <div class="stat-value" id="total-assets">-</div>
-                <div class="stat-label">
-                    社交: <strong id="assets-social">-</strong> |
-                    金融: <strong id="assets-finance">-</strong>
+                <div class="stat-label" id="assets-categories-label">
+                    <span class="text-muted">加载中...</span>
                 </div>
                 <i class="bi bi-collection stat-icon"></i>
             </div>
@@ -233,11 +232,32 @@ function updateStats(data) {
 
     // Assets
     document.getElementById('total-assets').textContent = formatNumber(assets.total);
-    console.log('资产分类数据:', assets.by_category);
-    console.log('社交分类数量:', assets.by_category['社交'] || 0);
-    console.log('金融分类数量:', assets.by_category['金融'] || 0);
-    document.getElementById('assets-social').textContent = formatNumber(assets.by_category['社交'] || 0);
-    document.getElementById('assets-finance').textContent = formatNumber(assets.by_category['金融'] || 0);
+
+    // 动态更新资产分类显示
+    const assetsLabel = document.getElementById('assets-categories-label');
+    const categories = assets.by_category || {};
+    const categoryKeys = Object.keys(categories);
+
+    if (categoryKeys.length > 0) {
+        // 根据分类数量选择显示方式
+        if (categoryKeys.length <= 2) {
+            // 2个或更少：全部显示
+            const categoryText = categoryKeys.map(cat => `${cat}: ${categories[cat]}`).join(' | ');
+            assetsLabel.innerHTML = categoryText;
+        } else if (categoryKeys.length <= 4) {
+            // 3-4个：全部显示，使用换行
+            const categoryText = categoryKeys.map(cat => `${cat}: ${categories[cat]}`).join(' | ');
+            assetsLabel.innerHTML = `<small>${categoryText}</small>`;
+        } else {
+            // 超过4个：显示前3个
+            const displayCategories = categoryKeys.slice(0, 3);
+            const categoryText = displayCategories.map(cat => `${cat}: ${categories[cat]}`).join(' | ');
+            const moreCount = categoryKeys.length - 3;
+            assetsLabel.innerHTML = `<small>${categoryText} 等${moreCount}项</small>`;
+        }
+    } else {
+        assetsLabel.innerHTML = '<span class="text-muted">暂无分类</span>';
+    }
 
     // Wills
     document.getElementById('total-wills').textContent = formatNumber(wills.total);
@@ -383,8 +403,6 @@ async function loadCategoryChart() {
     console.log('开始加载资产分类图表...');
     const result = await apiCall('/admin/api/stats');
 
-    console.log('API返回结果:', result);
-
     if (!result || !result.success) {
         console.error('加载分类图表失败:', result);
         return;
@@ -395,11 +413,10 @@ async function loadCategoryChart() {
     }
 
     const categories = result.assets?.by_category || {};
-    console.log('资产分类数据:', categories);
     const labels = Object.keys(categories);
     const data = Object.values(categories);
-    console.log('标签:', labels);
-    console.log('数据:', data);
+
+    console.log('资产分类图表 - 标签:', labels, '数据:', data);
 
     // 丰富的配色方案
     const colorPalette = [

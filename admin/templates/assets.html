@@ -60,14 +60,16 @@
                         <td>{{ asset.platform_name }}</td>
                         <td>{{ asset.account }}</td>
                         <td>
-                            {% if asset.category == '社交' %}
-                            <span class="badge badge-soft-primary">社交</span>
-                            {% elif asset.category == '金融' %}
-                            <span class="badge badge-soft-success">金融</span>
-                            {% elif asset.category == '记忆' %}
-                            <span class="badge badge-soft-info">记忆</span>
+                            {% if asset.category == '社交媒体' %}
+                            <span class="badge badge-soft-primary">社交媒体</span>
+                            {% elif asset.category == '电子邮箱' %}
+                            <span class="badge badge-soft-success">电子邮箱</span>
+                            {% elif asset.category == '云存储与数字内容' %}
+                            <span class="badge badge-soft-info">云存储与数字内容</span>
+                            {% elif asset.category == '虚拟资产与数字货币' %}
+                            <span class="badge badge-soft-warning">虚拟资产与数字货币</span>
                             {% else %}
-                            <span class="badge badge-soft-warning">虚拟财产</span>
+                            <span class="badge badge-soft-secondary">其他数字资产</span>
                             {% endif %}
                         </td>
                         <td>{{ asset.notes[:20] if asset.notes else '-' }}</td>
