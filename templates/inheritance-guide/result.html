@@ -204,7 +204,7 @@
                     <h6 class="mt-3"><i class="bi bi-gavel"></i> 法律维权途径</h6>
                     <ol class="legal-actions">
                         {% for action in step.legal_actions %}
-                        <li>{{ action }}</li>
+                        <li>{{ action | safe }}</li>
                         {% endfor %}
                     </ol>
                     {% endif %}
