@@ -9,7 +9,7 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     UPLOAD_FOLDER = 'uploads'
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
-    
+
     # 会话配置 - 确保在部署环境中持久化
     SESSION_COOKIE_SECURE = False  # 开发环境为False，生产环境根据需要设置
     SESSION_COOKIE_HTTPONLY = True
@@ -50,7 +50,8 @@ class ProductionConfig(Config):
             DATABASE_URL += '?sslmode=require&pool_pre_ping=True&pool_size=10&max_overflow=20&pool_recycle=1800&pool_timeout=30'
 
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
-        print(f"✅ 使用外部PostgreSQL数据库: {DATABASE_URL.split('@')[0]}@...")
+        # 安全地打印数据库信息（不暴露密码）
+        print(f"✅ 使用外部PostgreSQL数据库")
     else:
         # 如果没有提供DATABASE_URL，使用SQLite（不推荐用于生产）
         DATA_DIR = os.environ.get('RENDER_DATA_DIR') or '/opt/render/project/data'
