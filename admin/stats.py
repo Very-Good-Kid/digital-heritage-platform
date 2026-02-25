@@ -22,148 +22,92 @@ def get_dashboard_stats(use_cache=True):
         return _stats_cache['data']
 
     # 重新查询数据库
-    # 使用单次查询获取所有用户统计
-    user_stats = db.session.query(
-        func.count(User.id).label('total'),
-        func.sum(func.cast(User.is_active, db.Integer)).label('active'),
-        func.sum(func.cast(User.is_admin, db.Integer)).label('admin')
-    ).first()
+    try:
+        # 使用单次查询获取所有用户统计
+        user_stats = db.session.query(
+            func.count(User.id).label('total'),
+            func.sum(func.cast(User.is_active, db.Integer)).label('active'),
+            func.sum(func.cast(User.is_admin, db.Integer)).label('admin')
+        ).first()
 
-    # 计算活跃用户数（is_active=True的行数）
-    active_users = User.query.filter_by(is_active=True).count()
-    admin_users = User.query.filter_by(is_admin=True).count()
+        # 计算活跃用户数（is_active=True的行数）
+        active_users = User.query.filter_by(is_active=True).count()
+        admin_users = User.query.filter_by(is_admin=True).count()
 
-    # 资产统计 - 使用单次查询
-    asset_categories = db.session.query(
-        DigitalAsset.category,
-        func.count(DigitalAsset.id)
-    ).group_by(DigitalAsset.category).all()
-    total_assets = sum(count for _, count in asset_categories)
-    asset_stats = {cat: count for cat, count in asset_categories}
+        # 资产统计 - 使用单次查询
+        asset_categories = db.session.query(
+            DigitalAsset.category,
+            func.count(DigitalAsset.id)
+        ).group_by(DigitalAsset.category).all()
+        total_assets = sum(count for _, count in asset_categories)
+        asset_stats = {cat: count for cat, count in asset_categories}
 
-    # 遗嘱统计 - 使用单次查询
-    will_stats = db.session.query(
-        DigitalWill.status,
-        func.count(DigitalWill.id)
-    ).group_by(DigitalWill.status).all()
-    total_wills = sum(count for _, count in will_stats)
-    will_status = {status: count for status, count in will_stats}
+        # 遗嘱统计 - 使用单次查询
+        will_stats = db.session.query(
+            DigitalWill.status,
+            func.count(DigitalWill.id)
+        ).group_by(DigitalWill.status).all()
+        total_wills = sum(count for _, count in will_stats)
+        will_status = {status: count for status, count in will_stats}
 
-    # 内容统计 - 使用单次聚合查询
-    week_ago = get_china_time() - timedelta(days=7)
+        # 内容统计 - 使用单次聚合查询
+        week_ago = get_china_time() - timedelta(days=7)
 
-    content_stats = db.session.query(
-        func.count(PlatformPolicy.id).label('policies'),
-        func.count(FAQ.id).label('faqs'),
-        func.count(Story.id).label('stories')
-    ).first()
+        content_stats = db.session.query(
+            func.count(PlatformPolicy.id).label('policies'),
+            func.count(FAQ.id).label('faqs'),
+            func.count(Story.id).label('stories')
+        ).first()
 
-    pending_stories = Story.query.filter_by(status='pending').count()
+        pending_stories = Story.query.filter_by(status='pending').count()
 
-    # 周统计
-    new_users_week = User.query.filter(User.created_at >= week_ago).count()
-    active_users_week = User.query.filter(
-        User.updated_at >= week_ago,
-        User.is_active == True
-    ).count()
+        # 周统计
+        new_users_week = User.query.filter(User.created_at >= week_ago).count()
+        active_users_week = User.query.filter(
+            User.updated_at >= week_ago,
+            User.is_active == True
+        ).count()
 
-    data = {
-        'users': {
-            'total': user_stats.total or 0,
-            'active': active_users,
-            'admin': admin_users,
-            'new_week': new_users_week,
-            'active_week': active_users_week
-        },
-        'assets': {
-            'total': total_assets,
-            'by_category': asset_stats
-        },
-        'wills': {
-            'total': total_wills,
-            'by_status': will_status
-        },
-        'content': {
-            'policies': content_stats.policies or 0,
-            'faqs': content_stats.faqs or 0,
-            'stories': content_stats.stories or 0,
-            'pending_stories': pending_stories
+        data = {
+            'users': {
+                'total': user_stats.total or 0,
+                'active': active_users,
+                'admin': admin_users,
+                'new_week': new_users_week,
+                'active_week': active_users_week
+            },
+            'assets': {
+                'total': total_assets,
+                'by_category': asset_stats
+            },
+            'wills': {
+                'total': total_wills,
+                'by_status': will_status
+            },
+            'content': {
+                'policies': content_stats.policies or 0,
+                'faqs': content_stats.faqs or 0,
+                'stories': content_stats.stories or 0,
+                'pending_stories': pending_stories
+            }
         }
-    }
 
-    # 更新缓存
-    _stats_cache['data'] = data
-    _stats_cache['timestamp'] = current_time
+        # 更新缓存
+        _stats_cache['data'] = data
+        _stats_cache['timestamp'] = current_time
 
-    return data
-    # 使用单次查询获取所有用户统计
-    user_stats = db.session.query(
-        func.count(User.id).label('total'),
-        func.sum(func.cast(User.is_active, db.Integer)).label('active'),
-        func.sum(func.cast(User.is_admin, db.Integer)).label('admin')
-    ).first()
-
-    # 计算活跃用户数（is_active=True的行数）
-    active_users = User.query.filter_by(is_active=True).count()
-    admin_users = User.query.filter_by(is_admin=True).count()
-
-    # 资产统计 - 使用单次查询
-    asset_categories = db.session.query(
-        DigitalAsset.category,
-        func.count(DigitalAsset.id)
-    ).group_by(DigitalAsset.category).all()
-    total_assets = sum(count for _, count in asset_categories)
-    asset_stats = {cat: count for cat, count in asset_categories}
-
-    # 遗嘱统计 - 使用单次查询
-    will_stats = db.session.query(
-        DigitalWill.status,
-        func.count(DigitalWill.id)
-    ).group_by(DigitalWill.status).all()
-    total_wills = sum(count for _, count in will_stats)
-    will_status = {status: count for status, count in will_stats}
-
-    # 内容统计 - 使用单次聚合查询
-    week_ago = get_china_time() - timedelta(days=7)
-
-    content_stats = db.session.query(
-        func.count(PlatformPolicy.id).label('policies'),
-        func.count(FAQ.id).label('faqs'),
-        func.count(Story.id).label('stories')
-    ).first()
-
-    pending_stories = Story.query.filter_by(status='pending').count()
-
-    # 周统计
-    new_users_week = User.query.filter(User.created_at >= week_ago).count()
-    active_users_week = User.query.filter(
-        User.updated_at >= week_ago,
-        User.is_active == True
-    ).count()
-
-    return {
-        'users': {
-            'total': user_stats.total or 0,
-            'active': active_users,
-            'admin': admin_users,
-            'new_week': new_users_week,
-            'active_week': active_users_week
-        },
-        'assets': {
-            'total': total_assets,
-            'by_category': asset_stats
-        },
-        'wills': {
-            'total': total_wills,
-            'by_status': will_status
-        },
-        'content': {
-            'policies': content_stats.policies or 0,
-            'faqs': content_stats.faqs or 0,
-            'stories': content_stats.stories or 0,
-            'pending_stories': pending_stories
+        return data
+    except Exception as e:
+        print(f"[ERROR] get_dashboard_stats failed: {e}")
+        import traceback
+        traceback.print_exc()
+        # 返回空数据避免页面崩溃
+        return {
+            'users': {'total': 0, 'active': 0, 'admin': 0, 'new_week': 0, 'active_week': 0},
+            'assets': {'total': 0, 'by_category': {}},
+            'wills': {'total': 0, 'by_status': {}},
+            'content': {'policies': 0, 'faqs': 0, 'stories': 0, 'pending_stories': 0}
         }
-    }
 
 
 def get_user_growth_data(days=30):
