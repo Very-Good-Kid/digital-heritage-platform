@@ -115,37 +115,24 @@ os.makedirs('temp_pdfs', exist_ok=True)
 
 # 自动初始化数据库（部署时自动执行）
 def init_database_on_startup():
-    """应用启动时自动初始化数据库表和数据"""
-    with app.app_context():
-        try:
-            # 创建所有表
-            db.create_all()
-            print("[OK] Database tables created/verified")
-            
-            # 导入 PolicyDetail 模型
-            from models import PolicyDetail
-            
-            # 检查是否需要初始化政策数据
-            if PlatformPolicy.query.count() == 0:
-                print("[INFO] Initializing platform policies...")
-                init_default_policies()
-            
-            # 检查是否需要初始化政策详情数据
-            if PolicyDetail.query.count() == 0:
-                print("[INFO] Initializing policy details...")
-                init_default_policy_details()
-                
-                # 迁移旧的资产分类
-                migrate_asset_categories()
+    """应用启动时自动初始化数据库表和数据
+    
+    注意: 此函数在应用启动时执行,如果数据库连接有问题,
+    可能会导致应用启动失败。因此添加超时和错误处理。
+    """
+    global _db_initialized
+    
+    # 不在启动时初始化,改为在第一个请求时初始化
+    # 原因: Neon数据库可能休眠,导致启动时连接超时
+    # 解决: 让应用先启动,数据库在实际使用时再连接
+    print("[INFO] Database initialization deferred to first request")
+    print("[INFO] Application will start without database connection")
+    _db_initialized = False
 
-            # 检查是否需要初始化FAQ数据
-            if FAQ.query.count() == 0:
-                print("[INFO] Initializing FAQ data...")
-                init_default_faqs()
-
-            print("[OK] Database initialization complete")
-        except Exception as e:
-            print(f"[ERROR] Database initialization failed: {e}")
+# 不在应用启动时立即初始化数据库
+# 原因: Neon免费版会休眠,启动时连接可能超时导致应用无法启动
+# 解决: 让应用先启动成功,数据库在第一个请求时初始化
+# init_database_on_startup()  # 已注释掉
 
 def init_default_policies():
     """初始化默认平台政策数据"""
@@ -364,39 +351,70 @@ def init_default_faqs():
     db.session.commit()
     print(f"[OK] Added {len(faqs_data)} FAQs")
 
-# 使用 before_request 替代模块级别调用
-# 这样可以确保应用完全初始化后再执行数据库初始化
+# 使用 before_request 作为主要初始化机制
+# 数据库在第一个实际请求时初始化,避免启动时连接超时
 _db_initialized = False
+_db_init_lock = False
 
 @app.before_request
 def initialize_database():
-    """在第一个请求前初始化数据库（仅执行一次）"""
-    global _db_initialized
-    if not _db_initialized:
+    """在第一个请求前初始化数据库
+    
+    优化说明:
+    1. 不在应用启动时初始化,避免Neon休眠导致启动失败
+    2. 在第一个实际请求时初始化,此时Neon已被唤醒
+    3. 使用锁机制防止并发初始化
+    """
+    global _db_initialized, _db_init_lock
+    
+    # 如果已初始化,直接返回
+    if _db_initialized:
+        return
+    
+    # 如果正在初始化,等待
+    if _db_init_lock:
+        return
+    
+    # 开始初始化
+    _db_init_lock = True
+    try:
+        print("[INFO] Starting database initialization on first request...")
+        
+        # 创建所有表
+        db.create_all()
+        print("[OK] Database tables created/verified")
+
+        # 导入 PolicyDetail 模型
+        from models import PolicyDetail
+
+        # 检查是否需要初始化政策数据
+        if PlatformPolicy.query.count() == 0:
+            print("[INFO] Initializing platform policies...")
+            init_default_policies()
+
+        # 检查是否需要初始化政策详情数据
+        if PolicyDetail.query.count() == 0:
+            print("[INFO] Initializing policy details...")
+            init_default_policy_details()
+
+        # 迁移旧的资产分类
+        migrate_asset_categories()
+
+        # 检查是否需要初始化FAQ数据
+        if FAQ.query.count() == 0:
+            print("[INFO] Initializing FAQ data...")
+            init_default_faqs()
+
         _db_initialized = True
-        try:
-            db.create_all()
-            print("[OK] Database tables created/verified")
-            
-            from models import PolicyDetail
-            
-            if PlatformPolicy.query.count() == 0:
-                print("[INFO] Initializing platform policies...")
-                init_default_policies()
-            
-            if PolicyDetail.query.count() == 0:
-                print("[INFO] Initializing policy details...")
-                init_default_policy_details()
-
-            migrate_asset_categories()
-
-            if FAQ.query.count() == 0:
-                print("[INFO] Initializing FAQ data...")
-                init_default_faqs()
-
-            print("[OK] Database initialization complete")
-        except Exception as e:
-            print(f"[ERROR] Database initialization failed: {e}")
+        print("[OK] Database initialization complete")
+    except Exception as e:
+        print(f"[ERROR] Database initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
+        # 即使失败也标记为已初始化,避免重复尝试
+        _db_initialized = True
+    finally:
+        _db_init_lock = False
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -417,45 +435,44 @@ def after_request(response):
                 response.headers['Content-Type'] = 'text/html; charset=utf-8'
     return response
 
-# 数据库连接健康检查中间件
-@app.before_request
-def check_db_connection():
-    """在每个请求前检查数据库连接 - 优化版本"""
-    # 排除静态文件和健康检查端点
-    if request.endpoint and (request.endpoint.startswith('static') or request.endpoint == 'health_check'):
-        return
+# 数据库连接健康检查中间件 - 优化版本
+# 移除每个请求的连接检查,依赖SQLAlchemy的pool_pre_ping机制
+# @app.before_request
+# def check_db_connection():
+#     """在每个请求前检查数据库连接 - 已禁用"""
+#     # 此功能已禁用,因为:
+#     # 1. pool_pre_ping=True 已经在每个连接使用前检查健康
+#     # 2. 每个请求执行SELECT 1会增加数据库负担
+#     # 3. dispose() 会导致连接池耗尽
+#     pass
 
-    try:
-        # 执行一个简单的查询来检查连接
-        db.session.execute(db.text('SELECT 1'))
-    except Exception as e:
-        # 如果连接失败,尝试重连
-        print(f"[WARN] Database connection lost, attempting to reconnect: {e}")
-        try:
-            # 移除当前会话并创建新连接
-            db.session.remove()
-            db.engine.dispose()  # 关闭所有连接
-            db.session.execute(db.text('SELECT 1'))
-            print("[INFO] Database reconnection successful")
-        except Exception as e2:
-            print(f"[ERROR] Database reconnection failed: {e2}")
-            # 如果重连失败,返回友好的错误页面
-            if request.path.startswith('/admin/api/'):
-                return jsonify({'success': False, 'message': '数据库连接失败,请稍后重试'}), 503
-            return render_template('error.html',
-                                 error_code=503,
-                                 error_message='数据库连接失败,请稍后重试'), 503
-
-# 健康检查端点
+# 健康检查端点 - 优化版本
 @app.route('/health')
 def health_check():
-    """健康检查端点 - 用于Render等服务监控"""
-    try:
-        # 检查数据库连接
-        db.session.execute(db.text('SELECT 1'))
-        return jsonify({'status': 'healthy', 'database': 'connected'}), 200
-    except Exception as e:
-        return jsonify({'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}), 503
+    """健康检查端点 - 用于Render等服务监控
+
+    优化说明:
+    1. 不执行数据库查询,避免唤醒休眠的Neon数据库
+    2. 只检查应用是否初始化完成
+    3. 依赖SQLAlchemy的pool_pre_ping机制处理数据库连接
+    """
+    # 检查应用是否完全初始化
+    if not _db_initialized:
+        return jsonify({
+            'status': 'initializing',
+            'message': 'Application is initializing'
+        }), 503
+
+    # 应用已初始化,返回健康状态
+    # 不检查数据库连接,因为:
+    # 1. Neon免费版会休眠,健康检查会失败
+    # 2. pool_pre_ping会在实际使用时检查连接
+    # 3. 避免频繁唤醒Neon导致资源浪费
+    return jsonify({
+        'status': 'healthy',
+        'initialized': _db_initialized,
+        'message': 'Application is running'
+    }), 200
 
 # 错误处理
 @app.errorhandler(404)

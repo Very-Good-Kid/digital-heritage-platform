@@ -51,21 +51,23 @@ class ProductionConfig(Config):
 
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
 
-        # SQLAlchemy连接池配置 - 针对Render免费版优化
-        # 使用更小的连接池和更短的超时时间
+        # SQLAlchemy连接池配置 - 针对Render免费版 + Neon免费版优化
+        # Neon免费版限制: 最多10个并发连接, 5分钟无活动休眠
+        # Render免费版限制: 512MB内存, 0.1 vCPU, 15分钟无活动休眠
         SQLALCHEMY_ENGINE_OPTIONS = {
-            'pool_size': 5,           # 连接池大小（Render免费版限制）
-            'max_overflow': 5,        # 最大溢出连接数
-            'pool_pre_ping': True,    # 每次使用前检查连接健康
-            'pool_recycle': 300,      # 5分钟回收连接（防止SSL断开）
-            'pool_timeout': 10,       # 获取连接超时时间
+            'pool_size': 3,           # 连接池大小（减少到3,避免超出Neon限制）
+            'max_overflow': 2,        # 最大溢出连接数（总共最多5个连接）
+            'pool_pre_ping': True,    # 每次使用前检查连接健康（关键!）
+            'pool_recycle': 240,      # 4分钟回收连接（小于Neon的5分钟休眠）
+            'pool_timeout': 30,       # 获取连接超时时间（增加以应对Neon冷启动）
             'connect_args': {
-                'connect_timeout': 10,
-                'connection_timeout': 10,
+                'connect_timeout': 20,        # 增加到20秒,应对Neon冷启动
+                'connection_timeout': 20,
                 'keepalives': 1,
                 'keepalives_idle': 30,
                 'keepalives_interval': 10,
-                'keepalives_count': 5
+                'keepalives_count': 5,
+                'sslmode': 'require'           # 确保SSL连接
             }
         }
 
