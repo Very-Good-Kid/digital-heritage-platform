@@ -17,7 +17,7 @@ from .decorators import admin_required
 from .stats import get_dashboard_stats, get_user_growth_data, get_activity_data
 from .crud import user_crud, asset_crud, will_crud, content_crud
 
-admin_bp = Blueprint('admin', __name__, url_prefix='/admin', template_folder='templates')
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
 # ============================================================================
@@ -331,13 +331,13 @@ def api_delete_asset(asset_id):
 
 
 # ============================================================================
-# 数字遗嘱管理
+# 数字资产处置意愿声明书管理
 # ============================================================================
 
 @admin_bp.route('/wills')
 @admin_required
 def wills():
-    """数字遗嘱管理页面"""
+    """数字资产处置意愿声明书管理页面"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '')
@@ -370,7 +370,7 @@ def wills():
 @csrf_exempt
 @admin_required
 def api_wills():
-    """获取数字遗嘱列表API"""
+    """获取数字资产处置意愿声明书列表API"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '')
@@ -419,7 +419,7 @@ def api_wills():
 @csrf_exempt
 @admin_required
 def api_delete_will(will_id):
-    """删除数字遗嘱API"""
+    """删除数字资产处置意愿声明书API"""
     return will_crud.delete_will(will_id)
 
 

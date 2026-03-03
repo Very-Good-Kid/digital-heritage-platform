@@ -10,7 +10,7 @@ from models import DigitalAsset, DigitalWill, User, Story
 def require_ownership(view_func):
     """
     装饰器：确保用户只能访问自己的资源，管理员可访问所有
-    用于数字资产、数字遗嘱等用户资源
+    用于数字资产、数字资产处置意愿声明书等用户资源
     """
     @wraps(view_func)
     def decorated_function(*args, **kwargs):

@@ -261,19 +261,19 @@ def init_default_faqs():
     """初始化默认FAQ数据"""
     faqs_data = [
         FAQ(
-            question='数字遗产包括哪些内容？',
-            answer='数字遗产包括但不限于：社交媒体账号（微信、QQ、抖音等）、电子邮箱、云存储文件、虚拟货币、游戏账号、在线支付账户、博客文章、个人网站、数字相册、音视频文件等。',
+            question='数字资产包括哪些内容？',
+            answer='数字资产包括但不限于：社交媒体账号（微信、QQ、抖音等）、电子邮箱、云存储文件、虚拟货币、游戏账号、在线支付账户、博客文章、个人网站、数字相册、音视频文件等。',
             category='概念与价值',
             order=1
         ),
         FAQ(
-            question='什么是数字遗嘱？',
-            answer='数字遗嘱是指用户在生前制定的关于其数字资产如何处理的书面文件，包括账户信息、密码、处理方式等内容的详细说明。它可以指导继承人如何处理您的数字资产，避免账户丢失或数据永久消失。',
+            question='什么是数字资产处置意愿声明书？',
+            answer='数字资产处置意愿声明书是指用户在生前制定的关于其数字资产如何处理的书面文件，包括账户信息、密码、处理方式等内容的详细说明。它可以指导继承人如何处理您的数字资产，避免账户丢失或数据永久消失。',
             category='概念与价值',
             order=2
         ),
         FAQ(
-            question='为什么需要规划数字遗产？',
+            question='为什么需要规划数字资产？',
             answer='1. 避免重要数据永久丢失；2. 保护隐私和个人信息；3. 确保资产（如虚拟货币）不被浪费；4. 减轻家人的心理负担；5. 让数字记忆得以传承；6. 避免平台账户被自动删除。',
             category='概念与价值',
             order=3
@@ -285,8 +285,8 @@ def init_default_faqs():
             order=4
         ),
         FAQ(
-            question='如何保护我的数字遗产？',
-            answer='1. 定期备份重要数据到本地或云端；2. 使用密码管理器安全存储密码；3. 创建数字遗嘱并定期更新；4. 告知家人重要账户信息；5. 了解各平台的继承政策；6. 启用双重认证；7. 定期检查账户安全设置。',
+            question='如何保护我的数字资产？',
+            answer='1. 定期备份重要数据到本地或云端；2. 使用密码管理器安全存储密码；3. 创建数字资产处置意愿声明书并定期更新；4. 告知家人重要账户信息；5. 了解各平台的继承政策；6. 启用双重认证；7. 定期检查账户安全设置。',
             category='安全与管理',
             order=1
         ),
@@ -303,8 +303,8 @@ def init_default_faqs():
             order=3
         ),
         FAQ(
-            question='数字遗嘱有法律效力吗？',
-            answer='数字遗嘱在我国法律体系中尚未明确认定，但可以作为表达意愿的重要依据。根据《民法典》，遗嘱可以采用多种形式，包括打印、录音录像等。数字遗嘱如果能证明是本人真实意愿，可能被参考。建议配合传统遗嘱使用，并咨询专业律师。',
+            question='数字资产处置意愿声明书有法律效力吗？',
+            answer='数字资产处置意愿声明书在我国法律体系中尚未明确认定，但可以作为表达意愿的重要依据。根据《民法典》，遗嘱可以采用多种形式，包括打印、录音录像等。数字资产处置意愿声明书如果能证明是本人真实意愿，可能被参考。建议配合传统遗嘱使用，并咨询专业律师。',
             category='法律与继承',
             order=1
         ),
@@ -351,7 +351,7 @@ def init_default_faqs():
             order=2
         ),
         FAQ(
-            question='数字遗产继承中的伦理问题有哪些？',
+            question='数字资产继承中的伦理问题有哪些？',
             answer='1. 隐私与知情权的平衡；2. 逝者意愿与继承人利益的冲突；3. 数字身份的处理方式；4. 社交媒体纪念账号的管理；5. 敏感内容的处理；6. 家人之间的协商机制。建议在生前就这些问题做出明确安排。',
             category='伦理与隐私',
             order=3
@@ -421,22 +421,64 @@ def after_request(response):
 @app.before_request
 def check_db_connection():
     """在每个请求前检查数据库连接 - 优化版本"""
-    # 只在特定路由检查,避免每个请求都检查
-    if request.endpoint and request.endpoint.startswith('admin'):
+    # 排除静态文件和健康检查端点
+    if request.endpoint and (request.endpoint.startswith('static') or request.endpoint == 'health_check'):
+        return
+
+    try:
+        # 执行一个简单的查询来检查连接
+        db.session.execute(db.text('SELECT 1'))
+    except Exception as e:
+        # 如果连接失败,尝试重连
+        print(f"[WARN] Database connection lost, attempting to reconnect: {e}")
         try:
-            # 执行一个简单的查询来检查连接
+            # 移除当前会话并创建新连接
+            db.session.remove()
+            db.engine.dispose()  # 关闭所有连接
             db.session.execute(db.text('SELECT 1'))
-        except Exception as e:
-            # 如果连接失败,尝试重连
-            print(f"[WARN] Database connection lost, attempting to reconnect: {e}")
-            try:
-                db.session.remove()
-                db.session.execute(db.text('SELECT 1'))
-                print("[INFO] Database reconnection successful")
-            except Exception as e2:
-                print(f"[ERROR] Database reconnection failed: {e2}")
-                # 如果重连失败,返回错误页面
-                return "数据库连接失败,请稍后重试", 503
+            print("[INFO] Database reconnection successful")
+        except Exception as e2:
+            print(f"[ERROR] Database reconnection failed: {e2}")
+            # 如果重连失败,返回友好的错误页面
+            if request.path.startswith('/admin/api/'):
+                return jsonify({'success': False, 'message': '数据库连接失败,请稍后重试'}), 503
+            return render_template('error.html',
+                                 error_code=503,
+                                 error_message='数据库连接失败,请稍后重试'), 503
+
+# 健康检查端点
+@app.route('/health')
+def health_check():
+    """健康检查端点 - 用于Render等服务监控"""
+    try:
+        # 检查数据库连接
+        db.session.execute(db.text('SELECT 1'))
+        return jsonify({'status': 'healthy', 'database': 'connected'}), 200
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}), 503
+
+# 错误处理
+@app.errorhandler(404)
+def not_found_error(error):
+    """404错误处理"""
+    if request.path.startswith('/admin/api/'):
+        return jsonify({'success': False, 'message': '页面未找到'}), 404
+    return render_template('error.html', error_code=404, error_message='页面未找到'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """500错误处理"""
+    db.session.rollback()
+    if request.path.startswith('/admin/api/'):
+        return jsonify({'success': False, 'message': '服务器内部错误'}), 500
+    return render_template('error.html', error_code=500, error_message='服务器内部错误'), 500
+
+@app.errorhandler(503)
+def service_unavailable(error):
+    """503错误处理"""
+    if request.path.startswith('/admin/api/'):
+        return jsonify({'success': False, 'message': '服务暂时不可用'}), 503
+    return render_template('error.html', error_code=503, error_message='服务暂时不可用'), 503
 
 # 路由：处理 Chrome DevTools 请求（避免 404 报错）
 @app.route('/.well-known/appspecific/com.chrome.devtools.json')
@@ -919,11 +961,11 @@ def decrypt_asset(asset_id):
     else:
         return jsonify({'success': False, 'message': '无密码信息'})
 
-# 路由：数字遗嘱
+# 路由：数字资产处置意愿声明书
 @app.route('/wills', methods=['GET', 'POST'])
 @login_required
 def wills():
-    """数字遗嘱列表"""
+    """数字资产处置意愿声明书列表"""
     if request.method == 'POST':
         assets_data = request.form.get('assets_data', '{}')
 
@@ -981,7 +1023,7 @@ def generate_will_excel_template():
 
         wb = Workbook()
         ws = wb.active
-        ws.title = "数字遗产意愿声明"
+        ws.title = "数字资产意愿声明"
 
         # 设置列宽
         ws.column_dimensions['A'].width = 8
@@ -1003,7 +1045,7 @@ def generate_will_excel_template():
         # 标题
         ws.merge_cells('A1:C1')
         title_cell = ws['A1']
-        title_cell.value = '数字遗产意愿声明模板'
+        title_cell.value = '数字资产意愿声明模板'
         title_cell.font = title_font
         title_cell.fill = title_fill
         title_cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -1011,8 +1053,8 @@ def generate_will_excel_template():
         # 基本信息
         ws.append([])
         ws.append(['基本信息'])
-        ws.append(['遗嘱标题', '我的数字遗产处理意愿'])
-        ws.append(['总体意愿说明', '请说明您对数字遗产的总体处理意愿'])
+        ws.append(['遗嘱标题', '我的数字资产处理意愿'])
+        ws.append(['总体意愿说明', '请说明您对数字资产的总体处理意愿'])
         ws.append(['指定继承人信息', '填写继承人的姓名、关系、联系方式等信息'])
         ws.append(['特别说明', '其他需要特别说明的事项'])
 
@@ -1067,7 +1109,7 @@ def generate_will_excel_template():
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name='数字遗产意愿声明模板.xlsx'
+            download_name='数字资产意愿声明模板.xlsx'
         )
     except ImportError:
         flash('Excel模板生成功能需要安装openpyxl库', 'error')
@@ -1134,17 +1176,17 @@ def generate_will_pdf_template():
         story = []
 
         # 标题
-        story.append(Paragraph("数字遗产意愿声明", title_style))
+        story.append(Paragraph("数字资产意愿声明", title_style))
         story.append(Spacer(1, 0.3 * inch))
 
         # 基本信息说明
         story.append(Paragraph("<b>一、基本信息</b>", heading_style))
         story.append(Paragraph(
-            "<b>遗嘱标题：</b>请填写遗嘱标题，例如：我的数字遗产处理意愿",
+            "<b>遗嘱标题：</b>请填写遗嘱标题，例如：我的数字资产处理意愿",
             body_style
         ))
         story.append(Paragraph(
-            "<b>总体意愿说明：</b>请简要说明您对数字遗产的总体处理意愿",
+            "<b>总体意愿说明：</b>请简要说明您对数字资产的总体处理意愿",
             body_style
         ))
         story.append(Paragraph(
@@ -1265,7 +1307,7 @@ def generate_will_pdf_template():
             output,
             mimetype='application/pdf',
             as_attachment=True,
-            download_name='数字遗产意愿声明模板.pdf'
+            download_name='数字资产意愿声明模板.pdf'
         )
     except Exception as e:
         flash(f'PDF模板生成失败：{str(e)}', 'error')
@@ -1274,7 +1316,7 @@ def generate_will_pdf_template():
 @app.route('/wills/<int:will_id>/view', methods=['GET'])
 @login_required
 def view_will(will_id):
-    """查看数字遗嘱"""
+    """查看数字资产处置意愿声明书"""
     will = DigitalWill.query.get_or_404(will_id)
 
     if will.user_id != current_user.id:
@@ -1299,7 +1341,7 @@ def generate_pdf(will_id):
         print(f"PDF generated at: {pdf_path}")
 
         if pdf_path and os.path.exists(pdf_path):
-            return send_file(pdf_path, as_attachment=True, download_name=f'数字遗嘱_{will.title}.pdf')
+            return send_file(pdf_path, as_attachment=True, download_name=f'数字资产处置意愿声明书_{will.title}.pdf')
         else:
             flash('PDF文件生成失败，请稍后重试', 'error')
             return redirect(url_for('view_will', will_id=will_id))
@@ -1313,7 +1355,7 @@ def generate_pdf(will_id):
 @app.route('/wills/<int:will_id>/delete', methods=['POST'])
 @login_required
 def delete_will(will_id):
-    """删除数字遗嘱"""
+    """删除数字资产处置意愿声明书"""
     will = DigitalWill.query.get_or_404(will_id)
 
     if will.user_id != current_user.id:
@@ -1334,7 +1376,7 @@ def delete_will(will_id):
 @app.route('/wills/<int:will_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_will(will_id):
-    """编辑数字遗嘱"""
+    """编辑数字资产处置意愿声明书"""
     will = DigitalWill.query.get_or_404(will_id)
 
     # 权限控制：只能编辑自己的遗嘱
@@ -1450,9 +1492,9 @@ def policies():
 def inheritance():
     """身后继承 - 整合平台政策矩阵和继承导航（静态版本）"""
     scenarios = [
-        {'id': 'scenario1', 'name': '有遗嘱+有密码', 'description': '您拥有合法的数字遗嘱和账户密码'},
-        {'id': 'scenario2', 'name': '有遗嘱+无密码', 'description': '您拥有合法的数字遗嘱但没有账户密码'},
-        {'id': 'scenario3', 'name': '无遗嘱+无密码', 'description': '您没有数字遗嘱和账户密码'}
+        {'id': 'scenario1', 'name': '有遗嘱+有密码', 'description': '您拥有合法的数字资产处置意愿声明书和账户密码'},
+        {'id': 'scenario2', 'name': '有遗嘱+无密码', 'description': '您拥有合法的数字资产处置意愿声明书但没有账户密码'},
+        {'id': 'scenario3', 'name': '无遗嘱+无密码', 'description': '您没有数字资产处置意愿声明书和账户密码'}
     ]
     return render_template('inheritance/index.html', scenarios=scenarios)
 
@@ -1473,9 +1515,9 @@ def inheritance_guide():
 
     platforms = PlatformPolicy.query.filter(PlatformPolicy.platform_name.in_(['微信', 'QQ', '抖音'])).all()
     scenarios = [
-        {'id': 'scenario1', 'name': '有遗嘱+有密码', 'description': '您拥有合法的数字遗嘱和账户密码'},
-        {'id': 'scenario2', 'name': '有遗嘱+无密码', 'description': '您拥有合法的数字遗嘱但没有账户密码'},
-        {'id': 'scenario3', 'name': '无遗嘱+无密码', 'description': '您没有数字遗嘱和账户密码'}
+        {'id': 'scenario1', 'name': '有遗嘱+有密码', 'description': '您拥有合法的数字资产处置意愿声明书和账户密码'},
+        {'id': 'scenario2', 'name': '有遗嘱+无密码', 'description': '您拥有合法的数字资产处置意愿声明书但没有账户密码'},
+        {'id': 'scenario3', 'name': '无遗嘱+无密码', 'description': '您没有数字资产处置意愿声明书和账户密码'}
     ]
     return render_template('inheritance-guide/index.html', platforms=platforms, scenarios=scenarios)
 
@@ -1544,14 +1586,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                 {
                     'step': 2,
                     'title': '办理继承权公证',
-                    'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                    'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                     'materials': [
                         {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                         {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                         {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件'},
                         {'name': '财产凭证', 'detail': '如微信钱包余额截图、虚拟商品购买记录等，证明账号内虚拟财产的存在与价值'}
                     ],
-                    'templates': ['数字遗产继承公证办理流程说明']
+                    'templates': ['数字资产继承公证办理流程说明']
                 },
                 {
                     'step': 3,
@@ -1564,12 +1606,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                         {'name': '遗嘱效力辅助文件', 'detail': '遗嘱订立全程录像、见证人证言、笔迹鉴定报告等，用于强化遗嘱法律效力'},
                         {'name': '账号归属佐证材料', 'detail': '逝者微信账号注册信息、绑定手机号、实名信息、历史充值记录等，可佐证账号归属'},
-                        {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的资产名称、对应账号、数量、预估价值'},
+                        {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的资产名称、对应账号、数量、预估价值'},
                         {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                     ],
                     'templates': [
-                        '数字遗产明细清单',
-                        '自书数字遗嘱参考模板',
+                        '数字资产明细清单',
+                        '自书数字资产处置意愿声明书参考模板',
                         '接受遗赠声明'
                     ]
                 },
@@ -1582,10 +1624,10 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {'name': '微信官方客服专线', 'detail': '95017'},
                         {'name': '线上官方入口', 'detail': '微信APP内「我-设置-帮助与反馈」'},
                         {'name': '线上官方入口', 'detail': '微信/QQ端「腾讯客服」小程序'},
-                        {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': '官方公示的数字遗产处置专属受理邮箱'}
+                        {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': '官方公示的数字资产处置专属受理邮箱'}
                     ],
                     'communication_items': [
-                        {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、微信账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、已知晓账号登录密码、申请合规处置账号内数字遗产'},
+                        {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、微信账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、已知晓账号登录密码、申请合规处置账号内数字资产'},
                         {'title': '确认关键规则', 'content': '无密码场景的专属受理通道、材料提交的指定方式与格式要求、审核周期、账号归属核验要求、进度查询方式、额外需要补充的个性化材料'}
                     ],
                     'templates': [],
@@ -1636,14 +1678,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                     {
                         'step': 2,
                         'title': '办理继承权公证',
-                        'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                        'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                         'materials': [
                             {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                             {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                             {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件；若部分继承人放弃继承，需提交《放弃继承权声明书》（需公证）'},
                             {'name': '财产凭证', 'detail': '包括抖音钱包余额截图、抖币充值记录、虚拟商品购买订单、抖音支付交易记录等，用于证明账号内虚拟财产的存在与价值'}
                         ],
-                        'templates': ['数字遗产继承公证办理流程说明']
+                        'templates': ['数字资产继承公证办理流程说明']
                     },
                     {
                         'step': 3,
@@ -1656,12 +1698,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                             {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                             {'name': '遗嘱效力辅助文件', 'detail': '遗嘱订立全程录像、见证人证言、笔迹鉴定报告等，用于强化遗嘱法律效力'},
                             {'name': '账号归属佐证材料', 'detail': '逝者抖音账号注册信息、绑定手机号、实名验证信息、历史充值记录、常用登录设备信息等，可佐证账号归属'},
-                            {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的虚拟资产名称（如抖币、钱包余额、虚拟道具等）、对应抖音账号、数量、预估价值；明确申请复制/下载/转移的个人信息范围（如作品、聊天记录、个人资料等）'},
+                            {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的虚拟资产名称（如抖币、钱包余额、虚拟道具等）、对应抖音账号、数量、预估价值；明确申请复制/下载/转移的个人信息范围（如作品、聊天记录、个人资料等）'},
                             {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                         ],
                         'templates': [
-                            '数字遗产明细清单',
-                            '自书数字遗嘱参考模板',
+                            '数字资产明细清单',
+                            '自书数字资产处置意愿声明书参考模板',
                             '接受遗赠声明'
                         ]
                     },
@@ -1674,10 +1716,10 @@ def generate_inheritance_steps(platform, scenario, policy):
                             {'name': '抖音官方客服专线', 'detail': '95152'},
                             {'name': '线上官方入口', 'detail': '抖音APP内「我-≡-我的客服」进入用户反馈界面'},
                             {'name': '线上官方入口', 'detail': '微信/QQ端搜索"抖音"公众号'},
-                            {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': 'feedback@douyin.com'}
+                            {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': 'feedback@douyin.com'}
                         ],
                         'communication_items': [
-                            {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、抖音账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、已知晓账号登录密码、申请合规处置账号内数字遗产'},
+                            {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、抖音账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、已知晓账号登录密码、申请合规处置账号内数字资产'},
                             {'title': '确认关键规则', 'content': '有密码场景的专属受理通道、材料提交的指定方式与格式要求、审核周期、账号归属及遗嘱效力核验要求、个人信息处理的范围限制、虚拟财产提取方式、进度查询方式、额外需要补充的个性化材料'}
                         ],
                         'templates': [],
@@ -1728,14 +1770,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {
                             'step': 2,
                             'title': '办理继承权公证',
-                            'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                            'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                             'materials': [
                                 {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                                 {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                                 {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件；若部分继承人放弃继承，需提交《放弃继承权声明书》（需公证）'},
                                 {'name': '财产凭证', 'detail': '包括Q币充值记录、QQ钱包余额截图、QQ会员/黄钻等虚拟商品购买订单、QQ支付交易记录等，用于证明账号内虚拟财产的存在与价值'}
                             ],
-                            'templates': ['数字遗产继承公证办理流程说明']
+                            'templates': ['数字资产继承公证办理流程说明']
                         },
                         {
                             'step': 3,
@@ -1748,12 +1790,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                                 {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                                 {'name': '遗嘱效力辅助文件', 'detail': '遗嘱订立全程录像、见证人证言、笔迹鉴定报告等，用于强化遗嘱法律效力'},
                                 {'name': '账号归属佐证材料', 'detail': '逝者QQ账号注册信息、绑定手机号、实名验证信息、历史充值记录、常用登录设备信息等，可佐证账号归属'},
-                                {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的资产名称（如Q币、QQ钱包余额、某游戏道具等）、对应QQ账号、数量、预估价值'},
+                                {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的资产名称（如Q币、QQ钱包余额、某游戏道具等）、对应QQ账号、数量、预估价值'},
                                 {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                             ],
                             'templates': [
-                                '数字遗产明细清单',
-                                '自书数字遗嘱参考模板',
+                                '数字资产明细清单',
+                                '自书数字资产处置意愿声明书参考模板',
                                 '接受遗赠声明'
                             ]
                         },
@@ -1767,10 +1809,10 @@ def generate_inheritance_steps(platform, scenario, policy):
                                 {'name': '线上官方入口', 'detail': 'QQAPP内「设置-帮助与反馈」'},
                                 {'name': '线上官方入口', 'detail': '腾讯客服官网（https://kf.qq.com/）'},
                                 {'name': '线上官方入口', 'detail': '微信/QQ端搜索"腾讯客服"小程序'},
-                                {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': '官方公示的数字遗产处置专属受理邮箱'}
+                                {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': '官方公示的数字资产处置专属受理邮箱'}
                             ],
                             'communication_items': [
-                                {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、QQ账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、已知晓账号登录密码、申请合规处置账号内数字遗产'},
+                                {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、QQ账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、已知晓账号登录密码、申请合规处置账号内数字资产'},
                                 {'title': '确认关键规则', 'content': '有密码场景的专属受理通道、材料提交的指定方式与格式要求、审核周期、账号归属及遗嘱效力核验要求、个人信息处理的范围限制、虚拟财产提取方式、进度查询方式、额外需要补充的个性化材料'}
                             ],
                             'templates': [],
@@ -1814,11 +1856,11 @@ def generate_inheritance_steps(platform, scenario, policy):
                             '逝者死亡证明（有效类型：医院出具的《死亡医学证明》、户籍地派出所出具的户籍注销证明、法院宣告死亡生效判决书，需加盖出具机构公章）',
                             '继承人与逝者亲属关系证明（开具渠道：户籍地派出所、公证处、街道办/村委会出具的有效亲属关系证明）',
                             '账号归属佐证材料（账号注册信息、绑定手机号、实名信息、历史充值记录，用于佐证账号归属）',
-                            '数字遗产明细清单（标注申请处置的资产名称、对应账号、数量、预估价值）'
+                            '数字资产明细清单（标注申请处置的资产名称、对应账号、数量、预估价值）'
                         ],
                         'templates': [
-                            f'{platform}数字遗产明细清单模板',
-                            '自书数字遗嘱参考模板',
+                            f'{platform}数字资产明细清单模板',
+                            '自书数字资产处置意愿声明书参考模板',
                             '继承申请材料整理封面与目录模板'
                         ],
                         'warning': '【场景核心合规提示】⚠️ 即使持有账号登录密码，也严禁擅自登录账号修改信息、转移资产、删除内容，该行为违反《用户服务协议》，可能触发账号风控冻结、回收，同时可能侵犯逝者隐私权，需先通过官方渠道完成合规申请，再按平台指引处置资产。'
@@ -1833,10 +1875,10 @@ def generate_inheritance_steps(platform, scenario, policy):
                             '客服工号、通话录音、线上聊天记录、邮件往来记录、受理回执编号'
                         ],
                         'templates': [
-                            f'{platform}数字遗产继承客服沟通标准话术模板'
+                            f'{platform}数字资产继承客服沟通标准话术模板'
                         ],
                         'communication_points': [
-                            f'清晰告知核心信息：逝者身份信息、{platform}账号、离世时间，继承人身份、与逝者关系、持有合法有效遗嘱与账号登录密码、申请合规处置账号内数字遗产',
+                            f'清晰告知核心信息：逝者身份信息、{platform}账号、离世时间，继承人身份、与逝者关系、持有合法有效遗嘱与账号登录密码、申请合规处置账号内数字资产',
                             f'确认关键规则：官方受理通道、材料提交方式与格式要求、审核周期、持有密码场景的专属处置流程、进度查询方式'
                         ],
                         'warning': '全程留存沟通凭证：客服工号、通话录音、线上聊天记录、邮件往来记录、受理回执编号。'
@@ -1846,12 +1888,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                         'title': '正式申请提交与审核跟进',
                         'description': f'按官方要求提交全套申请材料，完成正式申请，跟进审核进度，配合完成核验。',
                         'materials': [
-                            f'《{platform}数字遗产继承正式申请表》（按官方要求填写，完整填写逝者与继承人信息、账号信息、遗产明细、申请诉求、合规承诺）',
+                            f'《{platform}数字资产继承正式申请表》（按官方要求填写，完整填写逝者与继承人信息、账号信息、遗产明细、申请诉求、合规承诺）',
                             '所有申请材料按官方要求命名、排序、打包',
                             '提交成功凭证（提交截图、邮件记录、受理编号）'
                         ],
                         'templates': [
-                            f'{platform}数字遗产继承正式申请表',
+                            f'{platform}数字资产继承正式申请表',
                             '继承申请材料补正说明模板'
                         ],
                         'instructions': [
@@ -1898,14 +1940,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                 {
                     'step': 2,
                     'title': '办理继承权公证',
-                    'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                    'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                     'materials': [
                         {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                         {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                         {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件'},
                         {'name': '财产凭证', 'detail': '如微信钱包余额截图、虚拟商品购买记录等，证明账号内虚拟财产的存在与价值'}
                     ],
-                    'templates': ['数字遗产继承公证办理流程说明']
+                    'templates': ['数字资产继承公证办理流程说明']
                 },
                 {
                     'step': 3,
@@ -1918,12 +1960,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                         {'name': '遗嘱效力辅助文件', 'detail': '遗嘱订立全程录像、见证人证言、笔迹鉴定报告等，用于强化遗嘱法律效力'},
                         {'name': '账号归属佐证材料', 'detail': '逝者微信账号注册信息、绑定手机号、实名信息、历史充值记录等，可佐证账号归属'},
-                        {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的资产名称、对应账号、数量、预估价值'},
+                        {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的资产名称、对应账号、数量、预估价值'},
                         {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                     ],
                     'templates': [
-                        '数字遗产明细清单',
-                        '自书数字遗嘱参考模板',
+                        '数字资产明细清单',
+                        '自书数字资产处置意愿声明书参考模板',
                         '接受遗赠声明'
                     ]
                 },
@@ -1936,10 +1978,10 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {'name': '微信官方客服专线', 'detail': '95017'},
                         {'name': '线上官方入口', 'detail': '微信APP内「我-设置-帮助与反馈」'},
                         {'name': '线上官方入口', 'detail': '微信/QQ端「腾讯客服」小程序'},
-                        {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': '官方公示的数字遗产处置专属受理邮箱'}
+                        {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': '官方公示的数字资产处置专属受理邮箱'}
                     ],
                     'communication_items': [
-                        {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、微信账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、无账号登录密码、申请合规处置账号内数字遗产'},
+                        {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、微信账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、无账号登录密码、申请合规处置账号内数字资产'},
                         {'title': '确认关键规则', 'content': '无密码场景的专属受理通道、材料提交的指定方式与格式要求、审核周期、账号归属核验要求、进度查询方式、额外需要补充的个性化材料'}
                     ],
                     'templates': [],
@@ -1990,14 +2032,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                     {
                         'step': 2,
                         'title': '办理继承权公证',
-                        'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                        'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                         'materials': [
                             {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                             {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                             {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件；若部分继承人放弃继承，需提交《放弃继承权声明书》（需公证）'},
                             {'name': '财产凭证', 'detail': '包括抖音钱包余额截图、抖币充值记录、虚拟商品购买订单、抖音支付交易记录等，用于证明账号内虚拟财产的存在与价值'}
                         ],
-                        'templates': ['数字遗产继承公证办理流程说明']
+                        'templates': ['数字资产继承公证办理流程说明']
                     },
                     {
                         'step': 3,
@@ -2010,12 +2052,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                             {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                             {'name': '遗嘱效力辅助文件', 'detail': '遗嘱订立全程录像、见证人证言、笔迹鉴定报告等，用于强化遗嘱法律效力'},
                             {'name': '账号归属佐证材料', 'detail': '逝者抖音账号注册信息、绑定手机号、实名验证信息、历史充值记录、常用登录设备信息等，可佐证账号归属'},
-                            {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的虚拟资产名称（如抖币、钱包余额、虚拟道具等）、对应抖音账号、数量、预估价值；明确申请复制/下载/转移的个人信息范围（如作品、聊天记录、个人资料等）'},
+                            {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的虚拟资产名称（如抖币、钱包余额、虚拟道具等）、对应抖音账号、数量、预估价值；明确申请复制/下载/转移的个人信息范围（如作品、聊天记录、个人资料等）'},
                             {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                         ],
                         'templates': [
-                            '数字遗产明细清单',
-                            '自书数字遗嘱参考模板',
+                            '数字资产明细清单',
+                            '自书数字资产处置意愿声明书参考模板',
                             '接受遗赠声明'
                         ]
                     },
@@ -2028,7 +2070,7 @@ def generate_inheritance_steps(platform, scenario, policy):
                             {'name': '抖音官方客服专线', 'detail': '95152'},
                             {'name': '线上官方入口', 'detail': '抖音APP内「我-≡-我的客服」进入用户反馈界面'},
                             {'name': '线上官方入口', 'detail': '微信/QQ端搜索"抖音"公众号'},
-                            {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': 'feedback@douyin.com'}
+                            {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': 'feedback@douyin.com'}
                         ],
                         'communication_items': [
                             {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、抖音账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、无账号登录密码、已办理继承权公证、申请处置账号内虚拟遗产及复制/转移个人信息的具体诉求'},
@@ -2082,14 +2124,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {
                             'step': 2,
                             'title': '办理继承权公证',
-                            'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                            'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                             'materials': [
                                 {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                                 {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                                 {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件；若部分继承人放弃继承，需提交《放弃继承权声明书》（需公证）'},
                                 {'name': '财产凭证', 'detail': '包括Q币充值记录、QQ钱包余额截图、QQ会员/黄钻等虚拟商品购买订单、QQ支付交易记录等，用于证明账号内虚拟财产的存在与价值'}
                             ],
-                            'templates': ['数字遗产继承公证办理流程说明']
+                            'templates': ['数字资产继承公证办理流程说明']
                         },
                         {
                             'step': 3,
@@ -2102,12 +2144,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                                 {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                                 {'name': '遗嘱效力辅助文件', 'detail': '遗嘱订立全程录像、见证人证言、笔迹鉴定报告等，用于强化遗嘱法律效力'},
                                 {'name': '账号归属佐证材料', 'detail': '逝者QQ账号注册信息、绑定手机号、实名验证信息、历史充值记录、常用登录设备信息等，可佐证账号归属'},
-                                {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的资产名称（如Q币、QQ钱包余额、某游戏道具等）、对应QQ账号、数量、预估价值'},
+                                {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的资产名称（如Q币、QQ钱包余额、某游戏道具等）、对应QQ账号、数量、预估价值'},
                                 {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                             ],
                             'templates': [
-                                '数字遗产明细清单',
-                                '自书数字遗嘱参考模板',
+                                '数字资产明细清单',
+                                '自书数字资产处置意愿声明书参考模板',
                                 '接受遗赠声明'
                             ]
                         },
@@ -2121,7 +2163,7 @@ def generate_inheritance_steps(platform, scenario, policy):
                                 {'name': '线上官方入口', 'detail': 'QQAPP内「设置-帮助与反馈」'},
                                 {'name': '线上官方入口', 'detail': '腾讯客服官网（https://kf.qq.com/）'},
                                 {'name': '线上官方入口', 'detail': '微信/QQ端搜索"腾讯客服"小程序'},
-                                {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': '官方公示的数字遗产处置专属受理邮箱'}
+                                {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': '官方公示的数字资产处置专属受理邮箱'}
                             ],
                             'communication_items': [
                                 {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、QQ账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、无账号登录密码、已办理继承权公证、申请处置账号内虚拟遗产及复制/转移个人信息的具体诉求'},
@@ -2169,11 +2211,11 @@ def generate_inheritance_steps(platform, scenario, policy):
                             '继承人与逝者的亲属关系证明（用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书）',
                             '遗嘱效力辅助文件（遗嘱订立全程录像、见证人证言、笔迹鉴定报告等，用于强化遗嘱法律效力）',
                             f'账号归属佐证材料（逝者{platform}账号注册信息、绑定手机号、实名信息、历史充值记录等，可佐证账号归属）',
-                            '数字遗产明细清单（清晰标注申请处置的资产名称、对应账号、数量、预估价值）'
+                            '数字资产明细清单（清晰标注申请处置的资产名称、对应账号、数量、预估价值）'
                         ],
                         'templates': [
-                            f'{platform}数字遗产明细清单模板',
-                            '自书数字遗嘱参考模板',
+                            f'{platform}数字资产明细清单模板',
+                            '自书数字资产处置意愿声明书参考模板',
                             '继承申请材料整理封面与目录模板'
                         ],
                         'warning': '【场景核心合规提示】⚠️ 无登录密码的情况下，严禁尝试破解密码、通过短信验证码非授权登录、使用第三方工具登录逝者账号，该行为违反《用户服务协议》与相关法律规定，可能触发账号永久封禁、回收，同时需承担相应的侵权法律责任。'
@@ -2185,13 +2227,13 @@ def generate_inheritance_steps(platform, scenario, policy):
                         'materials': [
                             f'{platform}官方客服专线：{info["customer_service"]}',
                             f'线上官方入口：{", ".join(info["official_channels"])}',
-                            '官方公示的数字遗产处置专属受理邮箱'
+                            '官方公示的数字资产处置专属受理邮箱'
                         ],
                         'templates': [
-                            f'{platform}数字遗产继承客服沟通标准话术模板'
+                            f'{platform}数字资产继承客服沟通标准话术模板'
                         ],
                         'communication_points': [
-                            f'清晰告知核心信息：逝者姓名、身份证号、{platform}账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、无账号登录密码、申请合规处置账号内数字遗产',
+                            f'清晰告知核心信息：逝者姓名、身份证号、{platform}账号、离世时间，继承人姓名、与逝者关系、持有合法有效遗嘱、无账号登录密码、申请合规处置账号内数字资产',
                             f'确认关键规则：无密码场景的专属受理通道、材料提交的指定方式与格式要求、审核周期、账号归属核验要求、进度查询方式、额外需要补充的个性化材料'
                         ],
                         'warning': '全程留存沟通凭证：客服工号、通话录音、线上聊天记录、邮件往来记录、受理回执编号。严禁向客服以外的任何第三方泄露个人与逝者的隐私信息、证明材料。拒绝任何"付费代申请、代破解密码"的第三方服务，避免诈骗。'
@@ -2201,12 +2243,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                         'title': '正式申请提交与审核跟进',
                         'description': f'按官方要求提交全套申请材料，完成正式申请提交，跟进审核进度，处理审核结果。',
                         'materials': [
-                            f'《{platform}数字遗产继承正式申请表》（核心内容包括逝者与继承人的身份信息、{platform}账号信息、申请处置的遗产明细、申请诉求、继承人真实性承诺与法律责任声明）',
+                            f'《{platform}数字资产继承正式申请表》（核心内容包括逝者与继承人的身份信息、{platform}账号信息、申请处置的遗产明细、申请诉求、继承人真实性承诺与法律责任声明）',
                             '所有材料按官方要求命名、排序、打包（确保扫描件清晰、信息完整）',
                             '提交成功的完整凭证（提交截图、邮件发送记录、受理编号）'
                         ],
                         'templates': [
-                            f'{platform}数字遗产继承正式申请表',
+                            f'{platform}数字资产继承正式申请表',
                             '继承申请材料补正说明模板'
                         ],
                         'instructions': [
@@ -2248,15 +2290,15 @@ def generate_inheritance_steps(platform, scenario, policy):
                 {
                     'step': 2,
                     'title': '办理继承权公证',
-                    'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                    'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                     'materials': [
                         {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                         {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                         {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件'},
                         {'name': '财产凭证', 'detail': '如微信钱包余额截图、虚拟商品购买记录等，证明账号内虚拟财产的存在与价值'},
-                        {'name': '全体继承人关于遗产分割的协议', 'detail': '所有法定继承人需共同到场，就如何分配逝者的数字遗产达成书面一致意见，并在公证员面前签字确认'}
+                        {'name': '全体继承人关于遗产分割的协议', 'detail': '所有法定继承人需共同到场，就如何分配逝者的数字资产达成书面一致意见，并在公证员面前签字确认'}
                     ],
-                    'templates': ['数字遗产继承公证办理流程说明']
+                    'templates': ['数字资产继承公证办理流程说明']
                 },
                 {
                     'step': 3,
@@ -2269,12 +2311,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                         {'name': '账号归属佐证材料', 'detail': '逝者微信账号注册信息、绑定手机号、实名信息、历史充值记录等，可佐证账号归属'},
                         {'name': '全体继承人签署的申请委托书', 'detail': '由一位或几位继承人作为代表办理申请，需要其他所有继承人签署委托书，明确授权代表人办理相关事宜'},
-                        {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的资产名称、对应账号、数量、预估价值'},
+                        {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的资产名称、对应账号、数量、预估价值'},
                         {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                     ],
                     'templates': [
-                        '数字遗产明细清单',
-                        '自书数字遗嘱参考模板',
+                        '数字资产明细清单',
+                        '自书数字资产处置意愿声明书参考模板',
                         '接受遗赠声明'
                     ]
                 },
@@ -2287,7 +2329,7 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {'name': '微信官方客服专线', 'detail': '95017'},
                         {'name': '线上官方入口', 'detail': '微信APP内「我-设置-帮助与反馈」'},
                         {'name': '线上官方入口', 'detail': '微信/QQ端「腾讯客服」小程序'},
-                        {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': '官方公示的数字遗产处置专属受理邮箱'}
+                        {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': '官方公示的数字资产处置专属受理邮箱'}
                     ],
                     'communication_items': [
                         {'title': '沟通事项', 'content': '"您好，我需要申请继承已故XXX的微信账户内的资产。情况是：我们没有遗嘱，也不知道账号密码。我们已经办理好了所有法定继承人的《继承权公证书》。请问针对这种情况，我应该向哪个专用邮箱或通道提交材料？具体的材料格式和审核流程是怎样的？"'},
@@ -2342,14 +2384,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                     {
                         'step': 2,
                         'title': '办理继承权公证',
-                        'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                        'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                         'materials': [
                             {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                             {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                             {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件；若部分继承人放弃继承，需提交《放弃继承权声明书》（需公证）'},
                             {'name': '财产凭证', 'detail': '包括抖音钱包余额截图、抖币充值记录、虚拟商品购买订单、抖音支付交易记录等，用于证明账号内虚拟财产的存在与价值'}
                         ],
-                        'templates': ['数字遗产继承公证办理流程说明']
+                        'templates': ['数字资产继承公证办理流程说明']
                     },
                     {
                         'step': 3,
@@ -2362,12 +2404,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                             {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                             {'name': '账号归属佐证材料', 'detail': '逝者抖音账号注册信息、绑定手机号、实名验证信息、历史充值记录、常用登录设备信息等，可佐证账号归属'},
                             {'name': '全体继承人签署的申请委托书', 'detail': '由一位或几位继承人作为代表办理申请，需要其他所有继承人签署委托书，明确授权代表人办理相关事宜'},
-                            {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的虚拟资产名称（如抖币、钱包余额、虚拟道具等）、对应抖音账号、数量、预估价值；明确申请复制/下载/转移的个人信息范围（如作品、聊天记录、个人资料等）'},
+                            {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的虚拟资产名称（如抖币、钱包余额、虚拟道具等）、对应抖音账号、数量、预估价值；明确申请复制/下载/转移的个人信息范围（如作品、聊天记录、个人资料等）'},
                             {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                         ],
                         'templates': [
-                            '数字遗产明细清单',
-                            '自书数字遗嘱参考模板',
+                            '数字资产明细清单',
+                            '自书数字资产处置意愿声明书参考模板',
                             '接受遗赠声明'
                         ]
                     },
@@ -2380,7 +2422,7 @@ def generate_inheritance_steps(platform, scenario, policy):
                             {'name': '抖音官方客服专线', 'detail': '95152'},
                             {'name': '线上官方入口', 'detail': '抖音APP内「我-≡-我的客服」进入用户反馈界面'},
                             {'name': '线上官方入口', 'detail': '微信/QQ端搜索"抖音"公众号'},
-                            {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': 'feedback@douyin.com'}
+                            {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': 'feedback@douyin.com'}
                         ],
                         'communication_items': [
                             {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、抖音账号、离世时间，继承人姓名、与逝者关系、无有效遗嘱、无账号登录密码、已办理继承权公证、申请按法定继承规则处置账号内虚拟遗产及复制/转移个人信息的具体诉求'},
@@ -2434,14 +2476,14 @@ def generate_inheritance_steps(platform, scenario, policy):
                         {
                             'step': 2,
                             'title': '办理继承权公证',
-                            'description': '材料齐全且无误后，前往公证处办理。（详见：《数字遗产继承公证办理流程说明》）',
+                            'description': '材料齐全且无误后，前往公证处办理。（详见：《数字资产继承公证办理流程说明》）',
                             'materials': [
                                 {'name': '被继承人死亡证明', 'detail': '医院或派出所等部门出具'},
                                 {'name': '继承关系证明', 'detail': '如户口本、结婚证等'},
                                 {'name': '继承人身份证明', 'detail': '继承人的身份证、户口簿等有效证件；若部分继承人放弃继承，需提交《放弃继承权声明书》（需公证）'},
                                 {'name': '财产凭证', 'detail': '包括Q币充值记录、QQ钱包余额截图、QQ会员/黄钻等虚拟商品购买订单、QQ支付交易记录等，用于证明账号内虚拟财产的存在与价值'}
                             ],
-                            'templates': ['数字遗产继承公证办理流程说明']
+                            'templates': ['数字资产继承公证办理流程说明']
                         },
                         {
                             'step': 3,
@@ -2454,12 +2496,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                                 {'name': '继承人与逝者的亲属关系证明', 'detail': '用于佐证身份关联，开具渠道：户籍地派出所、街道办/村委会、公证处出具的亲属关系公证书'},
                                 {'name': '账号归属佐证材料', 'detail': '逝者QQ账号注册信息、绑定手机号、实名验证信息、历史充值记录、常用登录设备信息等，可佐证账号归属'},
                                 {'name': '全体继承人签署的申请委托书', 'detail': '由一位或几位继承人作为代表办理申请，需要其他所有继承人签署委托书，明确授权代表人办理相关事宜'},
-                                {'name': '数字遗产明细清单', 'detail': '清晰标注申请处置的资产名称（如Q币、QQ钱包余额、某游戏道具等）、对应QQ账号、数量、预估价值'},
+                                {'name': '数字资产明细清单', 'detail': '清晰标注申请处置的资产名称（如Q币、QQ钱包余额、某游戏道具等）、对应QQ账号、数量、预估价值'},
                                 {'name': '接受遗赠声明', 'detail': '由受遗赠人出具，明确表示接受逝者遗赠的数字财产。若受遗赠人为未成年人，可由法定监护人代为签署'}
                             ],
                             'templates': [
-                                '数字遗产明细清单',
-                                '自书数字遗嘱参考模板',
+                                '数字资产明细清单',
+                                '自书数字资产处置意愿声明书参考模板',
                                 '接受遗赠声明'
                             ]
                         },
@@ -2473,7 +2515,7 @@ def generate_inheritance_steps(platform, scenario, policy):
                                 {'name': '线上官方入口', 'detail': 'QQAPP内「设置-帮助与反馈」'},
                                 {'name': '线上官方入口', 'detail': '腾讯客服官网（https://kf.qq.com/）'},
                                 {'name': '线上官方入口', 'detail': '微信/QQ端搜索"腾讯客服"小程序'},
-                                {'name': '官方公示的数字遗产处置专属受理邮箱', 'detail': '官方公示的数字遗产处置专属受理邮箱'}
+                                {'name': '官方公示的数字资产处置专属受理邮箱', 'detail': '官方公示的数字资产处置专属受理邮箱'}
                             ],
                             'communication_items': [
                                 {'title': '清晰告知核心信息', 'content': '逝者姓名、身份证号、QQ账号、离世时间，继承人姓名、与逝者关系、无有效遗嘱、无账号登录密码、已办理继承权公证、申请按法定继承规则处置账号内虚拟遗产及复制/转移个人信息的具体诉求'},
@@ -2520,12 +2562,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                             '法定继承亲属关系证明（可证明继承人与逝者法定继承关系的文件，开具渠道：户籍地派出所、公证处出具的继承权公证书、街道办/村委会出具的亲属关系证明）',
                             '继承资格与分配方案文件（多名继承人的，需提供全体继承人签字确认的继承分配方案、授权委托书（明确牵头申请人与委托权限））',
                             f'账号归属佐证材料（逝者{platform}账号注册信息、绑定手机号、实名信息、历史充值记录，用于佐证账号归属）',
-                            '数字遗产明细清单（已知的账号内资产明细，标注资产名称、预估价值）'
+                            '数字资产明细清单（已知的账号内资产明细，标注资产名称、预估价值）'
                         ],
                         'templates': [
                             '法定继承亲属关系证明办理指引模板',
                             '多继承人继承分配方案与授权委托书模板',
-                            f'{platform}数字遗产明细清单模板'
+                            f'{platform}数字资产明细清单模板'
                         ],
                         'warning': '【场景核心合规提示】\n1. 法定继承资格严格按照《民法典》规定：继承开始后，由第一顺序继承人（配偶、子女、父母）继承，无第一顺序继承人的，由第二顺序继承人（兄弟姐妹、祖父母、外祖父母）继承\n2. 多名法定继承人共同申请的，需提供全体继承人的身份证明、授权委托书，明确牵头申请人与分配方案，避免因继承资格问题驳回申请'
                     },
@@ -2542,7 +2584,7 @@ def generate_inheritance_steps(platform, scenario, policy):
                             f'{platform}平台法定继承场景客服沟通标准话术模板'
                         ],
                         'communication_points': [
-                            f'清晰告知核心信息：逝者身份信息、{platform}账号、离世时间，法定继承人身份、与逝者的继承关系、无有效遗嘱、申请按法定继承规则处置账号内数字遗产',
+                            f'清晰告知核心信息：逝者身份信息、{platform}账号、离世时间，法定继承人身份、与逝者的继承关系、无有效遗嘱、申请按法定继承规则处置账号内数字资产',
                             f'确认关键规则：平台法定继承的受理要求、材料提交方式、审核周期、多继承人场景的专属要求、进度查询方式'
                         ],
                         'warning': '全程留存沟通凭证，多名继承人的需明确统一的对接人与联系方式，避免信息混乱。'
@@ -2552,12 +2594,12 @@ def generate_inheritance_steps(platform, scenario, policy):
                         'title': '正式申请提交与审核跟进',
                         'description': f'按官方要求提交法定继承全套申请材料，完成正式申请，跟进审核进度，配合完成核验。',
                         'materials': [
-                            f'《{platform}数字遗产法定继承申请表》（按官方要求填写，完整填写逝者与全体继承人信息、账号信息、继承资格说明、遗产分配方案、合规承诺）',
+                            f'《{platform}数字资产法定继承申请表》（按官方要求填写，完整填写逝者与全体继承人信息、账号信息、继承资格说明、遗产分配方案、合规承诺）',
                             '所有材料按官方要求命名、排序、打包',
                             '提交成功凭证与受理编号'
                         ],
                         'templates': [
-                            f'{platform}数字遗产法定继承申请表',
+                            f'{platform}数字资产法定继承申请表',
                             '继承申请材料补正说明模板'
                         ],
                         'instructions': [
@@ -2598,9 +2640,9 @@ def download_inheritance_template(template_name):
 
     # 模板文件映射（只保留文件夹中存在的文件）
     template_map = {
-        '数字遗产明细清单': '数字遗产明细清单.xlsx',
-        '自书数字遗嘱参考模板': '自书数字遗嘱参考模板.pdf',
-        '数字遗产继承公证办理流程说明': '《数字遗产继承公证办理流程说明》.pdf',
+        '数字资产明细清单': '数字资产明细清单.xlsx',
+        '自书数字资产处置意愿声明书参考模板': '自书数字资产处置意愿声明书参考模板.pdf',
+        '数字资产继承公证办理流程说明': '《数字资产继承公证办理流程说明》.pdf',
         '接受遗赠声明': '《接受遗赠声明》.pdf'
     }
 
@@ -2728,13 +2770,17 @@ def initialize_application():
 
             # 2. 然后初始化数据库
             with app.app_context():
-                # 确保数据目录存在
-                db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-                db_dir = os.path.dirname(db_path)
-
-                if db_dir and not os.path.exists(db_dir):
-                    os.makedirs(db_dir, exist_ok=True)
-                    print(f"Created database directory: {db_dir}")
+                # 确保数据目录存在(仅对SQLite)
+                db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+                if db_uri.startswith('sqlite:///'):
+                    # SQLite需要创建本地目录
+                    db_path = db_uri.replace('sqlite:///', '')
+                    db_dir = os.path.dirname(db_path)
+                    
+                    if db_dir and not os.path.exists(db_dir):
+                        os.makedirs(db_dir, exist_ok=True)
+                        print(f"Created database directory: {db_dir}")
+                # PostgreSQL不需要创建目录,跳过此步骤
 
                 # 创建所有表
                 db.create_all()
@@ -2815,19 +2861,19 @@ def initialize_sample_data():
     # ============================================================
     faqs = [
         FAQ(
-            question='数字遗产包括哪些内容？',
-            answer='数字遗产包括但不限于：社交媒体账号（微信、QQ、抖音等）、电子邮箱、云存储文件、虚拟货币、游戏账号、在线支付账户、博客文章、个人网站、数字相册、音视频文件等。',
+            question='数字资产包括哪些内容？',
+            answer='数字资产包括但不限于：社交媒体账号（微信、QQ、抖音等）、电子邮箱、云存储文件、虚拟货币、游戏账号、在线支付账户、博客文章、个人网站、数字相册、音视频文件等。',
             category='基础概念',
             order=1
         ),
         FAQ(
-            question='什么是数字遗嘱？',
-            answer='数字遗嘱是指用户在生前制定的关于其数字资产如何处理的书面文件，包括账户信息、密码、处理方式等内容的详细说明。它可以指导继承人如何处理您的数字资产，避免账户丢失或数据永久消失。',
+            question='什么是数字资产处置意愿声明书？',
+            answer='数字资产处置意愿声明书是指用户在生前制定的关于其数字资产如何处理的书面文件，包括账户信息、密码、处理方式等内容的详细说明。它可以指导继承人如何处理您的数字资产，避免账户丢失或数据永久消失。',
             category='基础概念',
             order=2
         ),
         FAQ(
-            question='为什么需要规划数字遗产？',
+            question='为什么需要规划数字资产？',
             answer='1. 避免重要数据永久丢失；2. 保护隐私和个人信息；3. 确保资产（如虚拟货币）不被浪费；4. 减轻家人的心理负担；5. 让数字记忆得以传承；6. 避免平台账户被自动删除。',
             category='基础概念',
             order=3
@@ -2839,8 +2885,8 @@ def initialize_sample_data():
             order=4
         ),
         FAQ(
-            question='如何保护我的数字遗产？',
-            answer='1. 定期备份重要数据到本地或云端；2. 使用密码管理器安全存储密码；3. 创建数字遗嘱并定期更新；4. 告知家人重要账户信息；5. 了解各平台的继承政策；6. 启用双重认证；7. 定期检查账户安全设置。',
+            question='如何保护我的数字资产？',
+            answer='1. 定期备份重要数据到本地或云端；2. 使用密码管理器安全存储密码；3. 创建数字资产处置意愿声明书并定期更新；4. 告知家人重要账户信息；5. 了解各平台的继承政策；6. 启用双重认证；7. 定期检查账户安全设置。',
             category='保护措施',
             order=1
         ),
@@ -2857,8 +2903,8 @@ def initialize_sample_data():
             order=3
         ),
         FAQ(
-            question='数字遗嘱有法律效力吗？',
-            answer='数字遗嘱在我国法律体系中尚未明确认定，但可以作为表达意愿的重要依据。根据《民法典》，遗嘱可以采用多种形式，包括打印、录音录像等。数字遗嘱如果能证明是本人真实意愿，可能被参考。建议配合传统遗嘱使用，并咨询专业律师。',
+            question='数字资产处置意愿声明书有法律效力吗？',
+            answer='数字资产处置意愿声明书在我国法律体系中尚未明确认定，但可以作为表达意愿的重要依据。根据《民法典》，遗嘱可以采用多种形式，包括打印、录音录像等。数字资产处置意愿声明书如果能证明是本人真实意愿，可能被参考。建议配合传统遗嘱使用，并咨询专业律师。',
             category='法律问题',
             order=6
         ),
@@ -2913,14 +2959,14 @@ def initialize_sample_data():
     stories = [
         Story(
             title='父亲的微信账号',
-            content='父亲去世后，我尝试找回他的微信账号，却遇到了重重困难。这让我意识到数字遗产规划的重要性...',
+            content='父亲去世后，我尝试找回他的微信账号，却遇到了重重困难。这让我意识到数字资产规划的重要性...',
             author='匿名用户',
             category='情感故事',
             status='approved'
         ),
         Story(
             title='数字时代的告别',
-            content='在这个数字时代，我们的记忆、情感都存储在云端。如何让这些珍贵的数字遗产得以延续？',
+            content='在这个数字时代，我们的记忆、情感都存储在云端。如何让这些珍贵的数字资产得以延续？',
             author='编辑部',
             category='哲思文章',
             status='approved'

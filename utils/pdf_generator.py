@@ -34,14 +34,14 @@ def generate_will_pdf(will):
     filename = f'will_{will.id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
     filepath = os.path.join(output_dir, filename)
 
-    # 创建PDF文档
+    # 创建PDF文档 - 优化边距以适应更多内容
     doc = SimpleDocTemplate(
         filepath,
         pagesize=A4,
-        rightMargin=50,
-        leftMargin=50,
-        topMargin=50,
-        bottomMargin=50
+        rightMargin=45,
+        leftMargin=45,
+        topMargin=40,
+        bottomMargin=40
     )
 
     # 创建样式
@@ -56,8 +56,8 @@ def generate_will_pdf(will):
         'CustomTitle',
         parent=styles['Heading1'],
         fontName=bold_font,
-        fontSize=18,
-        spaceAfter=15,
+        fontSize=16,
+        spaceAfter=12,
         alignment=TA_CENTER
     )
 
@@ -65,10 +65,10 @@ def generate_will_pdf(will):
         'CustomBody',
         parent=styles['BodyText'],
         fontName=normal_font,
-        fontSize=10.5,
-        spaceAfter=8,
+        fontSize=10,
+        spaceAfter=6,
         alignment=TA_JUSTIFY,
-        leading=18
+        leading=16
     )
 
     small_style = ParagraphStyle(
@@ -76,9 +76,9 @@ def generate_will_pdf(will):
         parent=styles['BodyText'],
         fontName=normal_font,
         fontSize=9,
-        spaceAfter=6,
+        spaceAfter=4,
         alignment=TA_JUSTIFY,
-        leading=14
+        leading=13
     )
 
     # 构建内容
@@ -118,20 +118,22 @@ def generate_will_pdf(will):
     ))
     story.append(Spacer(1, 0.1 * inch))
 
-    # 资产表格 - 两列格式，只显示已勾选的处置意愿
+    # 资产表格 - 三列格式：资产类别、处置意愿、备注
     asset_table_data = [
-        ['资产类别', '处置意愿']
+        ['资产类别', '处置意愿', '备注']
     ]
 
     # 社交媒体 - 只在有勾选时添加
     if will.assets_data and will.assets_data.get('social'):
         social_data = will.assets_data['social']
         actions = social_data.get('actions', [])
+        notes = social_data.get('notes', '')
         if actions:
-            social_actions = '\n'.join(['☑' + a for a in actions])
+            social_actions = '\n'.join(['☑ ' + a for a in actions])
             social_row = [
-                '社交媒体\n(微信、QQ 等)',
-                social_actions
+                '社交媒体\n(微信、QQ等)',
+                social_actions,
+                notes if notes else '-'
             ]
             asset_table_data.append(social_row)
 
@@ -139,11 +141,13 @@ def generate_will_pdf(will):
     if will.assets_data and will.assets_data.get('cloud'):
         cloud_data = will.assets_data['cloud']
         actions = cloud_data.get('actions', [])
+        notes = cloud_data.get('notes', '')
         if actions:
-            cloud_actions = '\n'.join(['☑' + a for a in actions])
+            cloud_actions = '\n'.join(['☑ ' + a for a in actions])
             cloud_row = [
                 '电子邮箱与云存储\n(iCloud、网盘等)',
-                cloud_actions
+                cloud_actions,
+                notes if notes else '-'
             ]
             asset_table_data.append(cloud_row)
 
@@ -151,53 +155,76 @@ def generate_will_pdf(will):
     if will.assets_data and will.assets_data.get('finance'):
         finance_data = will.assets_data['finance']
         actions = finance_data.get('actions', [])
+        notes = finance_data.get('notes', '')
         if actions:
-            finance_actions = '\n'.join(['☑' + a for a in actions])
+            finance_actions = '\n'.join(['☑ ' + a for a in actions])
             finance_row = [
                 '数字货币与金融App\n(比特币、游戏账号等)',
-                finance_actions
+                finance_actions,
+                notes if notes else '-'
             ]
             asset_table_data.append(finance_row)
 
     # 创建资产表格
-    asset_table = Table(asset_table_data, colWidths=[2.5*inch, 3.5*inch], repeatRows=1)
+    asset_table = Table(asset_table_data, colWidths=[1.8*inch, 2.8*inch, 1.6*inch], repeatRows=1)
     asset_table.setStyle(TableStyle([
+        # 表头样式
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), bold_font),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('TOPPADDING', (0, 0), (-1, 0), 8),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ffffff')),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+
+        # 内容行样式
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f9fa')),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
         ('FONTNAME', (0, 1), (-1, -1), normal_font),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('WORDWRAP', (0, 0), (-1, -1), True),
+        ('TOPPADDING', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+
+        # 第一列居中
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('VALIGN', (0, 1), (0, -1), 'MIDDLE'),
+
+        # 边框加粗
+        ('BOX', (0, 0), (-1, -1), 2, colors.HexColor('#2c3e50')),
     ]))
     story.append(asset_table)
+    story.append(Spacer(1, 0.2 * inch))
+
+    # 执行人指定 - 使用表格格式，加粗显示
+    executor_data = [
+        ['本人特此指定以下人员为本声明之执行人：']
+    ]
+    executor_table = Table(executor_data, colWidths=[6*inch])
+    executor_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), normal_font),
+        ('FONTSIZE', (0, 0), (-1, -1), 10.5),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    story.append(executor_table)
+
+    # 主要联系人
+    primary_text = f"<b>主要联系人</b>【姓名：{primary_name}，关系：{primary_relation}，电话：{primary_phone}】"
+    story.append(Paragraph(primary_text, body_style))
+    story.append(Spacer(1, 0.05 * inch))
+
+    # 备用联系人
+    backup_text = f"<b>备用联系人</b>【姓名：{backup_name}，关系：{backup_relation}，电话：{backup_phone}】"
+    story.append(Paragraph(backup_text, body_style))
+    story.append(Spacer(1, 0.05 * inch))
+
+    # 说明文字
+    executor_note = "主要联系人将全权负责启动并主导本声明所涉的资产处置流程。仅当主要联系人无法履行职责时，备用联系方可接替其职责。此指定仅为操作授权，并不涉及或改变任何法定继承人之实质财产继承权。"
+    story.append(Paragraph(executor_note, small_style))
     story.append(Spacer(1, 0.15 * inch))
-
-    # 执行人指定
-    if will.assets_data:
-        primary_name = will.assets_data.get('primary_name', '___________')
-        primary_relation = will.assets_data.get('primary_relation', '___________')
-        primary_phone = will.assets_data.get('primary_phone', '___________')
-        backup_name = will.assets_data.get('backup_name', '___________')
-        backup_relation = will.assets_data.get('backup_relation', '___________')
-        backup_phone = will.assets_data.get('backup_phone', '___________')
-    else:
-        primary_name = primary_relation = primary_phone = '___________'
-        backup_name = backup_relation = backup_phone = '___________'
-
-    executor_text = f"本人特此指定以下人员为本声明之执行人：主要联系人【姓名：{primary_name}，关系：{primary_relation}，电话：{primary_phone}】将全权负责启动并主导本声明所涉的资产处置流程。仅当主要联系人无法履行职责时，备用联系人【姓名：{backup_name}，关系：{backup_relation}，电话：{backup_phone}】方可接替其职责。此指定仅为操作授权，并不涉及或改变任何法定继承人之实质财产继承权。"
-    story.append(Paragraph(executor_text, body_style))
-    story.append(Spacer(1, 0.1 * inch))
 
     # 法律效力声明
     legal_text = "本人确认，本声明书旨在清晰表达本人关于数字资产处置的最终意愿，并为继承人提供明确指引。本人理解，本声明书本身并非具有直接强制执行力的法律文件，数字资产的最终归属与处理须遵守《中华人民共和国民法典》等法律规定及各平台合约。本人建议，可将本声明书进行公证，或作为本人正式遗嘱之附件，以增强其法律参考效力。"

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}数字遗产继承平台{% endblock %}</title>
+    <title>{% block title %}一站式数字资产规划与继承服务平台{% endblock %}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -315,6 +315,67 @@
         .material-list li:before {
             content: "📋";
             margin-right: 0.5rem;
+        }
+
+        /* Modern Soft Badges */
+        .badge-soft-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.83rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-soft-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.83rem;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .badge-soft-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.83rem;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .badge-soft-info {
+            background-color: rgba(14, 165, 233, 0.1);
+            color: #0ea5e9;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.83rem;
+            border: 1px solid rgba(14, 165, 233, 0.2);
+        }
+
+        .badge-soft-primary {
+            background-color: rgba(79, 70, 229, 0.1);
+            color: #4f46e5;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.83rem;
+            border: 1px solid rgba(79, 70, 229, 0.2);
+        }
+
+        .badge-soft-secondary {
+            background-color: rgba(107, 114, 128, 0.1);
+            color: #6b7280;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.83rem;
+            border: 1px solid rgba(107, 114, 128, 0.2);
         }
 
         @media (max-width: 768px) {

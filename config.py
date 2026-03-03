@@ -43,13 +43,32 @@ class ProductionConfig(Config):
 
         # 添加SSL和连接池参数以提高性能和稳定性
         # Neon数据库需要SSL连接
-        # 优化连接池配置
+        # 优化连接池配置 - 针对Render免费版优化
         if '?' in DATABASE_URL:
-            DATABASE_URL += '&sslmode=require&pool_pre_ping=True&pool_size=10&max_overflow=20&pool_recycle=1800&pool_timeout=30'
+            DATABASE_URL += '&sslmode=require&connect_timeout=10&connection_timeout=10'
         else:
-            DATABASE_URL += '?sslmode=require&pool_pre_ping=True&pool_size=10&max_overflow=20&pool_recycle=1800&pool_timeout=30'
+            DATABASE_URL += '?sslmode=require&connect_timeout=10&connection_timeout=10'
 
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
+
+        # SQLAlchemy连接池配置 - 针对Render免费版优化
+        # 使用更小的连接池和更短的超时时间
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_size': 5,           # 连接池大小（Render免费版限制）
+            'max_overflow': 5,        # 最大溢出连接数
+            'pool_pre_ping': True,    # 每次使用前检查连接健康
+            'pool_recycle': 300,      # 5分钟回收连接（防止SSL断开）
+            'pool_timeout': 10,       # 获取连接超时时间
+            'connect_args': {
+                'connect_timeout': 10,
+                'connection_timeout': 10,
+                'keepalives': 1,
+                'keepalives_idle': 30,
+                'keepalives_interval': 10,
+                'keepalives_count': 5
+            }
+        }
+
         # 安全地打印数据库信息（不暴露密码）
         print(f"✅ 使用外部PostgreSQL数据库")
     else:

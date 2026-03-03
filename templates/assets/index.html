@@ -138,9 +138,15 @@
                                             </td>
                                             <td>{{ asset.account }}</td>
                                             <td>
-                                                <span class="badge bg-{% if asset.category == '社交' %}primary{% elif asset.category == '金融' %}success{% elif asset.category == '记忆' %}info{% else %}warning{% endif %}">
-                                                    {{ asset.category }}
-                                                </span>
+                                                {% set category_badge = {
+                                                    '社交媒体': ('badge-soft-primary', 'bi-people-fill'),
+                                                    '电子邮箱': ('badge-soft-info', 'bi-envelope-fill'),
+                                                    '云存储与数字内容': ('badge-soft-secondary', 'bi-cloud-fill'),
+                                                    '虚拟资产与数字货币': ('badge-soft-warning', 'bi-coin'),
+                                                    '其他数字资产': ('badge-soft-success', 'bi-box-seam')
+                                                } %}
+                                                {% set badge_class, icon = category_badge.get(asset.category, ('badge-soft-warning', 'bi-gem')) %}
+                                                <span class="badge {{ badge_class }}"><i class="bi {{ icon }} me-1"></i>{{ asset.category }}</span>
                                             </td>
                                             <td>{{ asset.created_at.strftime('%Y-%m-%d') }}</td>
                                             <td>
@@ -208,7 +214,7 @@
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>提示：</strong>如需创建数字资产继承意愿声明书，请前往
-                        <a href="{{ url_for('wills') }}" class="alert-link">数字遗嘱页面</a>进行创建。
+                        <a href="{{ url_for('wills') }}" class="alert-link">数字资产处置意愿声明书页面</a>进行创建。
                     </div>
                 </div>
             </div>

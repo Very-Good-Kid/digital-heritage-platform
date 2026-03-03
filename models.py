@@ -66,7 +66,7 @@ class DigitalAsset(db.Model):
         return f'<DigitalAsset {self.platform_name}>'
 
 class DigitalWill(db.Model):
-    """数字遗嘱模型"""
+    """数字资产处置意愿声明书模型"""
     __tablename__ = 'digital_wills'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -129,7 +129,7 @@ class Story(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     author = db.Column(db.String(100))
-    category = db.Column(db.String(50))  # 情感故事、哲思文章、媒体报道
+    category = db.Column(db.String(50))  # 个人分享，官方发布
     image_url = db.Column(db.String(500))
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     created_at = db.Column(db.DateTime, default=get_china_time)

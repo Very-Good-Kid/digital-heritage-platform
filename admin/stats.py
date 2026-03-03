@@ -50,23 +50,21 @@ def get_dashboard_stats(use_cache=True):
         total_wills = sum(count for _, count in will_stats)
         will_status = {status: count for status, count in will_stats}
 
-        # 内容统计 - 使用单次聚合查询
-        week_ago = get_china_time() - timedelta(days=7)
-
-        content_stats = db.session.query(
-            func.count(PlatformPolicy.id).label('policies'),
-            func.count(FAQ.id).label('faqs'),
-            func.count(Story.id).label('stories')
-        ).first()
-
-        pending_stories = Story.query.filter_by(status='pending').count()
+        # 内容统计 - 分别查询避免笛卡尔积
+        policies_count = PlatformPolicy.query.count()
+        faqs_count = FAQ.query.count()
+        stories_count = Story.query.count()
 
         # 周统计
+        week_ago = get_china_time() - timedelta(days=7)
         new_users_week = User.query.filter(User.created_at >= week_ago).count()
         active_users_week = User.query.filter(
             User.updated_at >= week_ago,
             User.is_active == True
         ).count()
+        
+        # 待审核故事
+        pending_stories = Story.query.filter_by(status='pending').count()
 
         data = {
             'users': {
@@ -85,9 +83,9 @@ def get_dashboard_stats(use_cache=True):
                 'by_status': will_status
             },
             'content': {
-                'policies': content_stats.policies or 0,
-                'faqs': content_stats.faqs or 0,
-                'stories': content_stats.stories or 0,
+                'policies': policies_count,
+                'faqs': faqs_count,
+                'stories': stories_count,
                 'pending_stories': pending_stories
             }
         }

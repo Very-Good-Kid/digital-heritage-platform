@@ -3,7 +3,7 @@ services:
     name: digital-heritage-platform
     env: python
     buildCommand: apt-get update && apt-get install -y fonts-wqy-microhei fonts-wqy-zenhei && pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --keep-alive 5 --max-requests 100 --max-requests-jitter 10
     envVars:
       - key: FLASK_ENV
         value: production
@@ -11,8 +11,11 @@ services:
         generateValue: true
       - key: RENDER_DATA_DIR
         value: /opt/render/project/data
+      - key: PYTHONUNBUFFERED
+        value: "true"
     disk:
       name: data
       sizeGB: 1
       mountPath: /opt/render/project/data
     region: oregon
+    healthCheckPath: /health

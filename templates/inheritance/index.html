@@ -274,7 +274,7 @@
                                     </td>
                                     <td style="vertical-align: middle;">
                                         用户申请注销前，平台将通过身份、安全状态、设备信息等多维度完成主体核验，确保注销行为系用户真实意思表示。<br><br>
-                                        在数字遗产场景下，逝者近亲属若需注销逝者账号，需先完成3.5条规定的亲属身份、逝者死亡证明等材料核验，且注销后的信息处理后果由权利人自行承担，<strong>平台无义务恢复已删除或匿名化的信息。</strong>
+                                        在数字资产场景下，逝者近亲属若需注销逝者账号，需先完成3.5条规定的亲属身份、逝者死亡证明等材料核验，且注销后的信息处理后果由权利人自行承担，<strong>平台无义务恢复已删除或匿名化的信息。</strong>
                                     </td>
                                 </tr>
                                 <tr>
@@ -310,13 +310,13 @@
 
                                 <div class="mb-4">
                                     <label class="form-label fw-bold">第一步：选择目标平台</label>
-                                    <div class="row">
-                                        <div class="col-md-4 mb-3">
-                                            <div class="form-check card">
-                                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div class="form-check card h-100">
+                                                <div class="card-body d-flex flex-column">
                                                     <input class="form-check-input" type="radio" name="platform"
                                                            id="platform_qq" value="QQ" required>
-                                                    <label class="form-check-label" for="platform_qq">
+                                                    <label class="form-check-label flex-grow-1" for="platform_qq">
                                                         <h6>QQ</h6>
                                                         <small class="text-muted">
                                                             继承可能性：
@@ -326,12 +326,12 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-4 mb-3">
-                                            <div class="form-check card">
-                                                <div class="card-body">
+                                        <div class="col-md-4">
+                                            <div class="form-check card h-100">
+                                                <div class="card-body d-flex flex-column">
                                                     <input class="form-check-input" type="radio" name="platform"
                                                            id="platform_wechat" value="微信" required>
-                                                    <label class="form-check-label" for="platform_wechat">
+                                                    <label class="form-check-label flex-grow-1" for="platform_wechat">
                                                         <h6>微信</h6>
                                                         <small class="text-muted">
                                                             继承可能性：
@@ -341,12 +341,12 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-4 mb-3">
-                                            <div class="form-check card">
-                                                <div class="card-body">
+                                        <div class="col-md-4">
+                                            <div class="form-check card h-100">
+                                                <div class="card-body d-flex flex-column">
                                                     <input class="form-check-input" type="radio" name="platform"
                                                            id="platform_douyin" value="抖音" required>
-                                                    <label class="form-check-label" for="platform_douyin">
+                                                    <label class="form-check-label flex-grow-1" for="platform_douyin">
                                                         <h6>抖音</h6>
                                                         <small class="text-muted">
                                                             继承可能性：
@@ -361,14 +361,14 @@
 
                                 <div class="mb-4">
                                     <label class="form-label fw-bold">第二步：选择您的继承情景</label>
-                                    <div class="row">
+                                    <div class="row g-3">
                                         {% for scenario in scenarios %}
-                                        <div class="col-md-4 mb-3">
-                                            <div class="form-check card">
-                                                <div class="card-body">
+                                        <div class="col-md-4">
+                                            <div class="form-check card h-100">
+                                                <div class="card-body d-flex flex-column">
                                                     <input class="form-check-input" type="radio" name="scenario"
                                                            id="{{ scenario.id }}" value="{{ scenario.id }}" required>
-                                                    <label class="form-check-label" for="{{ scenario.id }}">
+                                                    <label class="form-check-label flex-grow-1" for="{{ scenario.id }}">
                                                         <h6>{{ scenario.name }}</h6>
                                                         <small class="text-muted">{{ scenario.description }}</small>
                                                     </label>
@@ -395,7 +395,7 @@
                                 <div class="card-body">
                                     <h6><i class="bi bi-question-circle"></i> 什么是"有遗嘱+有密码"？</h6>
                                     <p class="text-muted small mb-0">
-                                        您拥有逝者的合法数字遗嘱，并且知道相应账户的登录密码。
+                                        您拥有逝者的合法数字资产处置意愿声明书，并且知道相应账户的登录密码。
                                         这是最理想的继承情景，成功率最高。
                                     </p>
                                 </div>
@@ -406,7 +406,7 @@
                                 <div class="card-body">
                                     <h6><i class="bi bi-question-circle"></i> 什么是"有遗嘱+无密码"？</h6>
                                     <p class="text-muted small mb-0">
-                                        您拥有逝者的合法数字遗嘱，但不知道账户的登录密码。
+                                        您拥有逝者的合法数字资产处置意愿声明书，但不知道账户的登录密码。
                                         需要通过平台客服申请账户恢复或转移。
                                     </p>
                                 </div>
@@ -417,7 +417,7 @@
                                 <div class="card-body">
                                     <h6><i class="bi bi-question-circle"></i> 什么是"无遗嘱+无密码"？</h6>
                                     <p class="text-muted small mb-0">
-                                        您既没有数字遗嘱，也不知道账户密码。
+                                        您既没有数字资产处置意愿声明书，也不知道账户密码。
                                         这是最困难的情景，通常需要通过法律途径解决。
                                     </p>
                                 </div>
@@ -428,7 +428,7 @@
                                 <div class="card-body">
                                     <h6><i class="bi bi-lightbulb"></i> 建议</h6>
                                     <p class="text-muted small mb-0">
-                                        建议在生前创建数字遗嘱，妥善保管账户密码，
+                                        建议在生前创建数字资产处置意愿声明书，妥善保管账户密码，
                                         并告知家人重要账户信息，以避免继承困难。
                                     </p>
                                 </div>

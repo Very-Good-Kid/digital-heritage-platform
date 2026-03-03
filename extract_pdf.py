@@ -1,7 +1,7 @@
 
 import pymupdf
 
-doc = pymupdf.open('c:/Users/admin/Desktop/demo - codebuddy/static/templates/数字遗产意愿声明模板.pdf')
+doc = pymupdf.open('c:/Users/admin/Desktop/demo - codebuddy/static/templates/数字资产意愿声明模板.pdf')
 for page_num in range(len(doc)):
     page = doc[page_num]
     text = page.get_text()

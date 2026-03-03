@@ -180,7 +180,7 @@ asset_crud = AssetCRUD()
 # ============================================================================
 
 class WillCRUD:
-    """数字遗嘱CRUD操作"""
+    """数字资产处置意愿声明书CRUD操作"""
 
     @staticmethod
     def delete_will(will_id):

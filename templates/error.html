@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}错误 {{ error_code }} - 一站式数字资产规划与继承服务平台{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-template">
+                <h1 class="display-1 text-muted">{{ error_code }}</h1>
+                <h2 class="mb-4">出错了</h2>
+                <div class="error-details mb-4">
+                    {% if error_code == 404 %}
+                        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                        <p class="mt-3">抱歉,您访问的页面不存在</p>
+                    {% elif error_code == 500 %}
+                        <i class="bi bi-bug text-danger" style="font-size: 4rem;"></i>
+                        <p class="mt-3">服务器内部错误,我们正在修复中</p>
+                    {% elif error_code == 503 %}
+                        <i class="bi bi-cloud-slash text-info" style="font-size: 4rem;"></i>
+                        <p class="mt-3">{{ error_message or '服务暂时不可用,请稍后重试' }}</p>
+                    {% else %}
+                        <i class="bi bi-exclamation-circle text-secondary" style="font-size: 4rem;"></i>
+                        <p class="mt-3">{{ error_message or '发生了一个错误' }}</p>
+                    {% endif %}
+                </div>
+                <div class="error-actions">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house-door"></i> 返回首页
+                    </a>
+                    <button onclick="history.back()" class="btn btn-outline-secondary btn-lg ms-2">
+                        <i class="bi bi-arrow-left"></i> 返回上页
+                    </button>
+                </div>
+                {% if error_code == 503 %}
+                <div class="mt-4 text-muted">
+                    <small>如果问题持续存在,请联系技术支持</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-template {
+    padding: 40px 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin: 40px 0;
+}
+
+.error-template h1 {
+    font-size: 8rem;
+    font-weight: bold;
+    opacity: 0.3;
+}
+
+.error-template h2 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.error-details {
+    font-size: 1.1rem;
+    color: #7f8c8d;
+}
+
+.error-actions {
+    margin-top: 30px;
+}
+
+.error-actions .btn {
+    margin: 5px;
+}
+</style>
+{% endblock %}
