@@ -55,11 +55,12 @@ class ProductionConfig(Config):
         # Neon免费版限制: 最多10个并发连接, 5分钟无活动休眠
         # Render免费版限制: 512MB内存, 0.1 vCPU, 15分钟无活动休眠
         SQLALCHEMY_ENGINE_OPTIONS = {
-            'pool_size': 3,           # 连接池大小（减少到3,避免超出Neon限制）
-            'max_overflow': 2,        # 最大溢出连接数（总共最多5个连接）
+            'pool_size': 2,           # 连接池大小（减少到2,避免超出Neon限制）
+            'max_overflow': 2,        # 最大溢出连接数（总共最多4个连接）
             'pool_pre_ping': True,    # 每次使用前检查连接健康（关键!）
-            'pool_recycle': 240,      # 4分钟回收连接（小于Neon的5分钟休眠）
+            'pool_recycle': 180,      # 3分钟回收连接（小于Neon的5分钟休眠）
             'pool_timeout': 30,       # 获取连接超时时间（增加以应对Neon冷启动）
+            'pool_reset_on_return': 'rollback',  # 连接返回时回滚,确保干净状态
             'connect_args': {
                 'connect_timeout': 20,        # 增加到20秒,应对Neon冷启动
                 'connection_timeout': 20,
@@ -67,7 +68,8 @@ class ProductionConfig(Config):
                 'keepalives_idle': 30,
                 'keepalives_interval': 10,
                 'keepalives_count': 5,
-                'sslmode': 'require'           # 确保SSL连接
+                'sslmode': 'require',         # 确保SSL连接
+                'application_name': 'digital-heritage-platform'  # 应用名称,便于调试
             }
         }
 

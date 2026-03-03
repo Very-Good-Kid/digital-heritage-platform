@@ -364,6 +364,7 @@ def initialize_database():
     1. 不在应用启动时初始化,避免Neon休眠导致启动失败
     2. 在第一个实际请求时初始化,此时Neon已被唤醒
     3. 使用锁机制防止并发初始化
+    4. 添加数据库连接重试机制
     """
     global _db_initialized, _db_init_lock
     
@@ -380,39 +381,53 @@ def initialize_database():
     try:
         print("[INFO] Starting database initialization on first request...")
         
-        # 创建所有表
-        db.create_all()
-        print("[OK] Database tables created/verified")
+        # 尝试初始化数据库,最多重试3次
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # 创建所有表
+                db.create_all()
+                print("[OK] Database tables created/verified")
 
-        # 导入 PolicyDetail 模型
-        from models import PolicyDetail
+                # 导入 PolicyDetail 模型
+                from models import PolicyDetail
 
-        # 检查是否需要初始化政策数据
-        if PlatformPolicy.query.count() == 0:
-            print("[INFO] Initializing platform policies...")
-            init_default_policies()
+                # 检查是否需要初始化政策数据
+                if PlatformPolicy.query.count() == 0:
+                    print("[INFO] Initializing platform policies...")
+                    init_default_policies()
 
-        # 检查是否需要初始化政策详情数据
-        if PolicyDetail.query.count() == 0:
-            print("[INFO] Initializing policy details...")
-            init_default_policy_details()
+                # 检查是否需要初始化政策详情数据
+                if PolicyDetail.query.count() == 0:
+                    print("[INFO] Initializing policy details...")
+                    init_default_policy_details()
 
-        # 迁移旧的资产分类
-        migrate_asset_categories()
+                # 迁移旧的资产分类
+                migrate_asset_categories()
 
-        # 检查是否需要初始化FAQ数据
-        if FAQ.query.count() == 0:
-            print("[INFO] Initializing FAQ data...")
-            init_default_faqs()
+                # 检查是否需要初始化FAQ数据
+                if FAQ.query.count() == 0:
+                    print("[INFO] Initializing FAQ data...")
+                    init_default_faqs()
 
-        _db_initialized = True
-        print("[OK] Database initialization complete")
-    except Exception as e:
-        print(f"[ERROR] Database initialization failed: {e}")
-        import traceback
-        traceback.print_exc()
-        # 即使失败也标记为已初始化,避免重复尝试
-        _db_initialized = True
+                _db_initialized = True
+                print("[OK] Database initialization complete")
+                break  # 成功,退出重试循环
+                
+            except Exception as e:
+                print(f"[WARN] Database initialization attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    print(f"[INFO] Retrying in 2 seconds...")
+                    import time
+                    time.sleep(2)
+                    # 清除失效的连接
+                    db.session.remove()
+                else:
+                    print(f"[ERROR] Database initialization failed after {max_retries} attempts")
+                    import traceback
+                    traceback.print_exc()
+                    # 即使失败也标记为已初始化,避免重复尝试
+                    _db_initialized = True
     finally:
         _db_init_lock = False
 
@@ -573,7 +588,22 @@ def login():
         password = request.form.get('password')
         remember = request.form.get('remember', False)
 
-        user = User.query.filter_by(username=username).first()
+        # 添加数据库连接重试机制
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                user = User.query.filter_by(username=username).first()
+                break  # 成功,退出重试循环
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"[WARN] Database query failed, retrying ({attempt + 1}/{max_retries}): {e}")
+                    db.session.remove()
+                    import time
+                    time.sleep(1)
+                else:
+                    print(f"[ERROR] Database query failed after {max_retries} attempts: {e}")
+                    flash('数据库连接失败,请稍后重试', 'error')
+                    return redirect(url_for('login'))
 
         if user and check_password_hash(user.password_hash, password):
             login_user(user, remember=remember)
