@@ -2,6 +2,35 @@
 
 {% block title %}数字传承 - 故里{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* 确保继承情景卡片等高 */
+    .form-check.card {
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-check.card .card-body {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-check.card .form-check-label {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    /* 确保平台选择卡片也等高 */
+    #guide .form-check.card {
+        min-height: 120px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <!-- 页面标题 -->

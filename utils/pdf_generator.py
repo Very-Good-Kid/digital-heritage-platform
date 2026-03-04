@@ -211,6 +211,22 @@ def generate_will_pdf(will):
     ]))
     story.append(executor_table)
 
+    # 获取联系人信息
+    if will.assets_data:
+        primary_name = will.assets_data.get('primary_name', '_____________')
+        primary_relation = will.assets_data.get('primary_relation', '_____________')
+        primary_phone = will.assets_data.get('primary_phone', '_____________')
+        backup_name = will.assets_data.get('backup_name', '_____________')
+        backup_relation = will.assets_data.get('backup_relation', '_____________')
+        backup_phone = will.assets_data.get('backup_phone', '_____________')
+    else:
+        primary_name = '_____________'
+        primary_relation = '_____________'
+        primary_phone = '_____________'
+        backup_name = '_____________'
+        backup_relation = '_____________'
+        backup_phone = '_____________'
+
     # 主要联系人
     primary_text = f"<b>主要联系人</b>【姓名：{primary_name}，关系：{primary_relation}，电话：{primary_phone}】"
     story.append(Paragraph(primary_text, body_style))
