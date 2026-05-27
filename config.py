@@ -16,6 +16,20 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_PERMANENT = True
 
+    # ===== AI 对话功能配置 =====
+    # 智谱AI: 对话(glm-4-flash) + 视觉(glm-4.6v-flash) + Embedding备选(embedding-3)
+    ZHIPU_API_KEY = os.environ.get('ZHIPU_API_KEY', '')
+    # SiliconFlow: Embedding(BAAI/bge-large-zh-v1.5,免费) + 备选对话(Qwen2.5-7B,免费)
+    SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY', '')
+    # Embedding提供者: 'siliconflow'(默认,免费) | 'zhipu'(备选)
+    EMBEDDING_PROVIDER = os.environ.get('EMBEDDING_PROVIDER', 'siliconflow')
+    # Tavily搜索API密钥(可选，不设置则禁用网络搜索)
+    TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '')
+    # RAG配置: 检索返回的最大文本块数
+    RAG_TOP_K = int(os.environ.get('RAG_TOP_K', '5'))
+    # RAG配置: 相似度阈值(低于此值的结果被过滤)
+    RAG_SIMILARITY_THRESHOLD = float(os.environ.get('RAG_SIMILARITY_THRESHOLD', '0.3'))
+
 class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True

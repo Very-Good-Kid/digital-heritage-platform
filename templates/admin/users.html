@@ -59,6 +59,7 @@
                         <th>状态</th>
                         <th>资产数</th>
                         <th>遗嘱数</th>
+                        <th>每日对话</th>
                         <th>注册时间</th>
                         <th>操作</th>
                     </tr>
@@ -85,6 +86,13 @@
                         </td>
                         <td>{{ user.digital_assets.count() }}</td>
                         <td>{{ user.digital_wills.count() }}</td>
+                        <td>
+                            <span class="badge badge-soft-info" title="点击修改" style="cursor:pointer"
+                                  onclick="editChatLimit({{ user.id }}, {{ user.daily_chat_limit if user.daily_chat_limit is not none else 5 }})">
+                                {% set lim = user.daily_chat_limit if user.daily_chat_limit is not none else 5 %}
+                                {{ '无限' if lim == -1 else lim|string + '次/天' }} <i class="bi bi-pencil-square" style="font-size:0.7em"></i>
+                            </span>
+                        </td>
                         <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
                             <div class="btn-group btn-group-sm">
@@ -420,6 +428,27 @@ function deleteUser(userId) {
     })
     .catch(error => alert('删除失败: ' + error.message))
     .finally(() => hideLoading());
+}
+
+// Edit Chat Limit
+function editChatLimit(userId, currentLimit) {
+    const newLimit = prompt(`设置用户ID ${userId} 每日AI对话次数上限：\n（0=禁止使用，-1=不限制，5=默认）`, currentLimit);
+    if (newLimit === null) return;
+    const limit = parseInt(newLimit);
+    if (isNaN(limit)) { alert('请输入有效数字'); return; }
+
+    apiCall(`/admin/api/users/${userId}/chat-limit`, {
+        method: 'POST',
+        body: {daily_chat_limit: limit}
+    })
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message || '设置失败');
+        }
+    })
+    .catch(error => alert('设置失败: ' + error.message));
 }
 </script>
 {% endblock %}

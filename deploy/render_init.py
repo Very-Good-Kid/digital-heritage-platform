@@ -63,7 +63,7 @@ def init_database():
             admin_count = User.query.filter_by(is_admin=True).count()
             if admin_count == 0:
                 print("\n⚠️  未检测到管理员账号")
-                print("   请使用 create_admin.py 创建管理员账号")
+                print("   请使用 scripts/create_admin.py 创建管理员账号")
             else:
                 print(f"✅ 已存在 {admin_count} 个管理员账号")
 
@@ -166,7 +166,7 @@ def main():
     print("=" * 60)
     print("\n后续步骤:")
     print("1. 如果是首次部署，请创建管理员账号:")
-    print("   python create_admin.py")
+    print("   python scripts/create_admin.py")
     print("\n2. 如果需要同步 FAQ 数据，请在本地运行:")
     print("   python sync_faq_to_neon.py")
     print("\n3. 访问管理员后台:")

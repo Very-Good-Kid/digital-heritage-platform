@@ -1,0 +1,786 @@
+{% extends "base.html" %}
+
+{% block title %}AI智能助手 - 故里{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== 聊天页面布局 ===== */
+    .chat-container {
+        max-width: 1100px;
+        margin: 1.5rem auto;
+        height: calc(100vh - 160px);
+        min-height: 500px;
+        display: flex;
+        padding: 0 1rem;
+        gap: 0;
+    }
+
+    /* ===== 左侧会话列表 ===== */
+    .session-sidebar {
+        width: 240px;
+        flex-shrink: 0;
+        background: white;
+        border-radius: 10px 0 0 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-right: 1px solid #eee;
+    }
+
+    .session-sidebar-header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .session-sidebar-header h6 { margin: 0; color: var(--dark-text); font-weight: 600; }
+
+    .new-chat-btn {
+        background: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 0.3rem 0.6rem;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.2s;
+    }
+
+    .new-chat-btn:hover { background: #2980b9; }
+
+    .session-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.5rem 0;
+    }
+
+    .session-item {
+        padding: 0.6rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f5f5f5;
+        transition: background 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .session-item:hover { background: #f0f7ff; }
+
+    .session-item.active {
+        background: #e8f4fd;
+        border-left: 3px solid var(--accent-color);
+    }
+
+    .session-item-title {
+        flex: 1;
+        font-size: 0.85rem;
+        color: var(--dark-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .session-item-time {
+        font-size: 0.7rem;
+        color: #aaa;
+        flex-shrink: 0;
+    }
+
+    .session-delete-btn {
+        color: #ccc;
+        cursor: pointer;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .session-item:hover .session-delete-btn { opacity: 1; }
+    .session-delete-btn:hover { color: var(--danger-color); }
+
+    /* ===== 右侧聊天面板 ===== */
+    .chat-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: white;
+        border-radius: 0 10px 10px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .chat-header {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .chat-header h5 { margin: 0; color: white; }
+
+    .usage-badge {
+        background: rgba(255,255,255,0.2);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 10px;
+        font-size: 0.78rem;
+    }
+
+    .usage-badge.warning { background: rgba(231,76,60,0.7); }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+        background: #f8f9fa;
+    }
+
+    .message {
+        margin-bottom: 1.5rem;
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .message.user { flex-direction: row-reverse; }
+
+    .message-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .message.assistant .message-avatar { background: var(--accent-color); color: white; }
+    .message.user .message-avatar { background: var(--success-color); color: white; }
+
+    .message-bubble {
+        max-width: 75%;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+
+    .message.assistant .message-bubble {
+        background: white;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        color: var(--dark-text);
+    }
+
+    .message.assistant .message-bubble h1,
+    .message.assistant .message-bubble h2,
+    .message.assistant .message-bubble h3 {
+        color: var(--primary-color);
+        margin-top: 0.8rem;
+        margin-bottom: 0.4rem;
+        font-weight: 600;
+    }
+
+    .message.assistant .message-bubble h3 { font-size: 1.05rem; }
+    .message.assistant .message-bubble h2 { font-size: 1.15rem; }
+    .message.assistant .message-bubble h1 { font-size: 1.25rem; }
+
+    .message.assistant .message-bubble ul,
+    .message.assistant .message-bubble ol {
+        padding-left: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .message.assistant .message-bubble li { margin-bottom: 0.2rem; }
+    .message.assistant .message-bubble p { margin-bottom: 0.5rem; }
+
+    .message.assistant .message-bubble code {
+        background: #f0f0f0;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        font-size: 0.9em;
+    }
+
+    .message.assistant .message-bubble pre {
+        background: #f5f5f5;
+        padding: 0.75rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        font-size: 0.85em;
+    }
+
+    .message.assistant .message-bubble blockquote {
+        border-left: 3px solid var(--accent-color);
+        padding-left: 0.75rem;
+        margin-left: 0;
+        color: #666;
+    }
+
+    .message.user .message-bubble {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .message-image {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .message-image:hover { transform: scale(1.05); }
+
+    .welcome-message {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #888;
+    }
+
+    .welcome-message i.main-icon {
+        font-size: 3rem;
+        color: var(--accent-color);
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .welcome-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+
+    .suggestion-btn {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        color: var(--dark-text);
+    }
+
+    .suggestion-btn:hover {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+        background: rgba(52, 152, 219, 0.05);
+    }
+
+    .chat-input-area {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        background: white;
+    }
+
+    .chat-input-area textarea {
+        flex: 1;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        resize: none;
+        font-size: 0.95rem;
+        max-height: 120px;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .chat-input-area textarea:focus { border-color: var(--accent-color); }
+
+    .img-upload-btn {
+        background: none;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 0.55rem 0.7rem;
+        cursor: pointer;
+        color: #666;
+        font-size: 1.1rem;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .img-upload-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+    .img-upload-btn.has-image {
+        border-color: var(--success-color);
+        color: var(--success-color);
+        background: rgba(39, 174, 96, 0.05);
+    }
+
+    .send-btn {
+        background: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: background 0.2s;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .send-btn:hover { background: #2980b9; }
+    .send-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    .image-preview-bar {
+        padding: 0.5rem 1.5rem;
+        background: #f0f0f0;
+        border-top: 1px solid #eee;
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .image-preview-bar.visible { display: flex; }
+    .image-preview-bar img { max-height: 50px; border-radius: 4px; }
+    .image-preview-bar .remove-img { color: var(--danger-color); cursor: pointer; font-size: 1.2rem; }
+    .image-preview-bar small { color: #666; }
+
+    .typing-indicator {
+        display: inline-flex;
+        gap: 4px;
+        padding: 0.5rem 0;
+    }
+
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: #999;
+        border-radius: 50%;
+        animation: typing 1.2s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-6px); }
+    }
+
+    @media (max-width: 768px) {
+        .chat-container { flex-direction: column; height: auto; }
+        .session-sidebar { width: 100%; border-radius: 10px 10px 0 0; max-height: 200px; border-right: none; border-bottom: 1px solid #eee; }
+        .chat-panel { border-radius: 0 0 10px 10px; min-height: 500px; }
+        .message-bubble { max-width: 85%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <!-- 左侧会话列表 -->
+    <div class="session-sidebar">
+        <div class="session-sidebar-header">
+            <h6><i class="bi bi-chat-left-text"></i> 对话记录</h6>
+            <button class="new-chat-btn" onclick="newChat()">
+                <i class="bi bi-plus-lg"></i> 新对话
+            </button>
+        </div>
+        <div class="session-list" id="session-list">
+            <!-- 动态加载 -->
+        </div>
+    </div>
+
+    <!-- 右侧聊天面板 -->
+    <div class="chat-panel">
+        <div class="chat-header">
+            <h5><i class="bi bi-robot"></i> 故里AI助手</h5>
+            <span class="usage-badge" id="usage-badge" title="今日对话次数">加载中...</span>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="welcome-message" id="welcome-msg">
+                <i class="bi bi-robot main-icon"></i>
+                <h5>你好！我是故里AI助手</h5>
+                <p>我可以帮你解答数字资产继承相关的法律问题</p>
+                <p><small>你也可以上传图片进行视觉问答</small></p>
+                <div class="welcome-suggestions">
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">微信账号可以继承吗？</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">数字遗产包括哪些？</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">如何写数字遗嘱？</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">支付宝余额如何继承？</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="image-preview-bar" id="image-preview-bar">
+            <img id="image-preview-thumb" src="" alt="预览">
+            <small id="image-preview-name">图片</small>
+            <i class="bi bi-x-circle remove-img" onclick="removeImage()" title="移除图片"></i>
+        </div>
+
+        <div class="chat-input-area">
+            <button class="img-upload-btn" id="img-upload-btn" onclick="document.getElementById('image-input').click()" title="上传图片">
+                <i class="bi bi-image"></i>
+            </button>
+            <input type="file" id="image-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="handleImageSelect(this)">
+            <textarea id="message-input" placeholder="输入你的问题..." rows="1"
+                      onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">
+                <i class="bi bi-send"></i> 发送
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    let currentSessionId = '';
+    let isStreaming = false;
+    let pendingImageBase64 = null;
+    let pendingImageMime = null;
+
+    // ===== 页面初始化 =====
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSessions();
+        loadUsage();
+    });
+
+    // ===== 会话列表 =====
+    function loadSessions() {
+        fetch('/chat/api/sessions').then(r => r.json()).then(data => {
+            const list = document.getElementById('session-list');
+            list.innerHTML = '';
+            data.sessions.forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'session-item' + (s.session_id === currentSessionId ? ' active' : '');
+                item.dataset.sessionId = s.session_id;
+                item.onclick = function() { switchSession(s.session_id); };
+                item.innerHTML = `
+                    <i class="bi bi-chat-left" style="color:#aaa;font-size:0.85rem;flex-shrink:0"></i>
+                    <span class="session-item-title">${escapeHtml(s.title)}</span>
+                    <span class="session-item-time">${s.last_time}</span>
+                    <i class="bi bi-x session-delete-btn" onclick="event.stopPropagation();deleteSession('${s.session_id}')" title="删除"></i>
+                `;
+                list.appendChild(item);
+            });
+        }).catch(() => {});
+    }
+
+    function switchSession(sessionId) {
+        if (isStreaming) return;
+        currentSessionId = sessionId;
+        // 高亮当前会话
+        document.querySelectorAll('.session-item').forEach(el => {
+            el.classList.toggle('active', el.dataset.sessionId === sessionId);
+        });
+        // 加载历史消息
+        fetch('/chat/api/history/' + sessionId).then(r => r.json()).then(data => {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '';
+            const welcome = document.getElementById('welcome-msg');
+            data.messages.forEach(msg => {
+                appendMessage(msg.role, msg.content, null);
+            });
+            scrollToBottom();
+        }).catch(() => {});
+    }
+
+    function deleteSession(sessionId) {
+        if (!confirm('确定删除该对话记录？')) return;
+        fetch('/chat/api/sessions/' + sessionId, {
+            method: 'DELETE',
+            headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                if (currentSessionId === sessionId) { newChat(); }
+                loadSessions();
+            }
+        }).catch(() => {});
+    }
+
+    // ===== 使用次数 =====
+    function loadUsage() {
+        fetch('/chat/api/usage').then(r => r.json()).then(data => {
+            const badge = document.getElementById('usage-badge');
+            if (data.limit === -1 || data.limit >= 999) {
+                badge.textContent = '无限次';
+                badge.classList.remove('warning');
+            } else {
+                badge.textContent = `今日剩余 ${data.remaining}/${data.limit} 次`;
+                badge.classList.toggle('warning', data.remaining <= 1);
+            }
+        }).catch(() => {});
+    }
+
+    // ===== 发送消息 =====
+    function sendMessage() {
+        const input = document.getElementById('message-input');
+        const message = input.value.trim();
+        if (!message || isStreaming) return;
+
+        const welcome = document.getElementById('welcome-msg');
+        if (welcome) welcome.style.display = 'none';
+
+        const imageData = pendingImageBase64 ? `data:${pendingImageMime};base64,${pendingImageBase64}` : null;
+        appendMessage('user', message, imageData);
+
+        input.value = '';
+        autoResize(input);
+        const imgToSend = pendingImageBase64;
+        const mimeToSend = pendingImageMime;
+        removeImage();
+        setStreaming(true);
+        callStreamAPI(message, imgToSend, mimeToSend);
+    }
+
+    function callStreamAPI(message, imageBase64, imageMime) {
+        const aiMsgDiv = appendMessage('assistant', '');
+        const bubble = aiMsgDiv.querySelector('.message-bubble');
+        bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+
+        let fullAnswer = '';
+        const requestBody = {
+            message: message,
+            session_id: currentSessionId,
+            enable_search: true
+        };
+        if (imageBase64) {
+            requestBody.image_base64 = imageBase64;
+            requestBody.image_mime_type = imageMime || 'image/jpeg';
+        }
+
+        fetch('/chat/api/stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify(requestBody)
+        }).then(response => {
+            if (response.status === 429) {
+                response.json().then(data => {
+                    bubble.innerHTML = '<span style="color:var(--danger-color)">' + escapeHtml(data.error) + '</span>';
+                    setStreaming(false);
+                    loadUsage();
+                });
+                return;
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            function read() {
+                reader.read().then(({ done, value }) => {
+                    if (done) {
+                        // 流结束（可能是正常结束或异常断开）
+                        // 无论哪种情况，都用marked.js渲染已收到的内容
+                        if (fullAnswer) {
+                            bubble.innerHTML = formatText(fullAnswer);
+                        }
+                        setStreaming(false);
+                        loadUsage();
+                        loadSessions();
+                        return;
+                    }
+                    const text = decoder.decode(value, { stream: true });
+                    const lines = text.split('\n');
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            if (data.error) {
+                                bubble.innerHTML = '<span style="color:var(--danger-color)">' + escapeHtml(data.error) + '</span>';
+                                setStreaming(false); return;
+                            }
+                            if (data.done) {
+                                bubble.innerHTML = formatText(fullAnswer);
+                                currentSessionId = data.session_id;
+                                setStreaming(false);
+                                loadUsage();
+                                loadSessions();
+                                return;
+                            }
+                            if (data.token) {
+                                fullAnswer += data.token;
+                                const escaped = fullAnswer
+                                    .replace(/&/g, '&amp;')
+                                    .replace(/</g, '&lt;')
+                                    .replace(/>/g, '&gt;')
+                                    .replace(/\n/g, '<br>');
+                                bubble.innerHTML = escaped;
+                                scrollToBottom();
+                            }
+                        } catch (e) {}
+                    }
+                    read();
+                }).catch(error => {
+                    // 流读取异常断开，渲染已收到的内容
+                    if (fullAnswer) {
+                        bubble.innerHTML = formatText(fullAnswer);
+                    }
+                    setStreaming(false);
+                });
+            }
+            read();
+        }).catch(error => {
+            bubble.innerHTML = '<span style="color:var(--danger-color)">网络错误，请稍后重试</span>';
+            setStreaming(false);
+        });
+    }
+
+    function formatText(text) {
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true, gfm: true });
+            return marked.parse(text);
+        }
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function appendMessage(role, content, imageDataUrl) {
+        const container = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        const avatarIcon = role === 'user' ? 'bi-person-fill' : 'bi-robot';
+        let bubbleContent = '';
+        if (imageDataUrl) {
+            bubbleContent += `<img src="${imageDataUrl}" class="message-image" onclick="window.open(this.src)" alt="图片">`;
+        }
+        if (role === 'assistant') {
+            bubbleContent += formatText(content);
+        } else {
+            bubbleContent += escapeHtml(content).replace(/\n/g, '<br>');
+        }
+        div.innerHTML = `
+            <div class="message-avatar"><i class="bi ${avatarIcon}"></i></div>
+            <div class="message-bubble">${bubbleContent}</div>
+        `;
+        container.appendChild(div);
+        scrollToBottom();
+        return div;
+    }
+
+    function scrollToBottom() {
+        const c = document.getElementById('chat-messages');
+        c.scrollTop = c.scrollHeight;
+    }
+
+    function setStreaming(streaming) {
+        isStreaming = streaming;
+        const btn = document.getElementById('send-btn');
+        btn.disabled = streaming;
+        btn.innerHTML = streaming ?
+            '<span class="spinner-border spinner-border-sm"></span> 生成中' :
+            '<i class="bi bi-send"></i> 发送';
+    }
+
+    function sendSuggestion(btn) {
+        document.getElementById('message-input').value = btn.textContent;
+        sendMessage();
+    }
+
+    function newChat() {
+        currentSessionId = '';
+        removeImage();
+        document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('chat-messages').innerHTML = `
+            <div class="welcome-message" id="welcome-msg">
+                <i class="bi bi-robot main-icon"></i>
+                <h5>你好！我是故里AI助手</h5>
+                <p>我可以帮你解答数字资产继承相关的法律问题</p>
+                <p><small>你也可以上传图片进行视觉问答</small></p>
+                <div class="welcome-suggestions">
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">微信账号可以继承吗？</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">数字遗产包括哪些？</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">如何写数字遗嘱？</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion(this)">支付宝余额如何继承？</button>
+                </div>
+            </div>`;
+    }
+
+    function handleKeyDown(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    // ===== 图片选择处理 =====
+    function handleImageSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) {
+            alert('图片大小不能超过10MB');
+            input.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            const b64 = dataUrl.split(',')[1];
+            if (b64.length <= 2 * 1024 * 1024) {
+                pendingImageBase64 = b64;
+                pendingImageMime = file.type || 'image/jpeg';
+                document.getElementById('image-preview-thumb').src = dataUrl;
+                document.getElementById('image-preview-name').textContent = file.name;
+                document.getElementById('image-preview-bar').classList.add('visible');
+                document.getElementById('img-upload-btn').classList.add('has-image');
+                const msgInput = document.getElementById('message-input');
+                if (!msgInput.value.trim()) msgInput.value = '请描述这张图片的内容';
+            } else {
+                compressImage(dataUrl, 1536, function(compressedDataUrl) {
+                    pendingImageBase64 = compressedDataUrl.split(',')[1];
+                    pendingImageMime = 'image/jpeg';
+                    document.getElementById('image-preview-thumb').src = compressedDataUrl;
+                    document.getElementById('image-preview-name').textContent = file.name + ' (已压缩)';
+                    document.getElementById('image-preview-bar').classList.add('visible');
+                    document.getElementById('img-upload-btn').classList.add('has-image');
+                    const msgInput = document.getElementById('message-input');
+                    if (!msgInput.value.trim()) msgInput.value = '请描述这张图片的内容';
+                });
+            }
+        };
+        reader.readAsDataURL(file);
+        input.value = '';
+    }
+
+    function compressImage(dataUrl, maxWidth, callback) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            let quality = 0.8;
+            let result = canvas.toDataURL('image/jpeg', quality);
+            while (result.split(',')[1].length > 2 * 1024 * 1024 && quality > 0.3) {
+                quality -= 0.1;
+                result = canvas.toDataURL('image/jpeg', quality);
+            }
+            callback(result);
+        };
+        img.src = dataUrl;
+    }
+
+    function removeImage() {
+        pendingImageBase64 = null;
+        pendingImageMime = null;
+        document.getElementById('image-preview-bar').classList.remove('visible');
+        document.getElementById('img-upload-btn').classList.remove('has-image');
+    }
+</script>
+{% endblock %}

@@ -4,7 +4,7 @@
 管理员账户创建脚本
 
 使用方法:
-    python create_admin.py
+    python scripts/create_admin.py
 
 交互式创建管理员账户
 """
@@ -131,11 +131,11 @@ def main():
         if command == '--help' or command == '-h':
             print("""
 用法:
-    python create_admin.py              # 创建管理员账户 (交互式)
-    python create_admin.py --list       # 列出所有管理员
-    python create_admin.py -l           # 列出所有管理员
-    python create_admin.py --help       # 显示帮助信息
-    python create_admin.py -h           # 显示帮助信息
+    python scripts/create_admin.py              # 创建管理员账户 (交互式)
+    python scripts/create_admin.py --list       # 列出所有管理员
+    python scripts/create_admin.py -l           # 列出所有管理员
+    python scripts/create_admin.py --help       # 显示帮助信息
+    python scripts/create_admin.py -h           # 显示帮助信息
             """)
             return
 

@@ -751,6 +751,18 @@ def sync():
 
 
 # ============================================================================
+# AI 知识库管理
+# ============================================================================
+
+@admin_bp.route('/knowledge')
+@login_required
+@admin_required
+def knowledge():
+    """AI知识库管理页面 - 管理员上传/查看/删除知识库文件"""
+    return render_template('admin/knowledge.html')
+
+
+# ============================================================================
 # 数据同步端点
 # ============================================================================
 
@@ -839,6 +851,67 @@ def sync_faq():
         }), 500
 
 
+# ============================================================================
+# AI对话次数管理
+# ============================================================================
 
+@admin_bp.route('/api/users/<int:user_id>/chat-limit', methods=['POST'])
+@csrf_exempt
+@admin_required
+def api_set_chat_limit(user_id):
+    """设置用户的每日AI对话次数限制
+
+    请求体(JSON):
+        - daily_chat_limit: 每日次数上限(int)，0表示禁止，-1表示不限
+    """
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+    limit = data.get('daily_chat_limit')
+
+    if limit is None or not isinstance(limit, int) or limit < -1:
+        return jsonify({'success': False, 'message': '无效的次数限制值'}), 400
+
+    user.daily_chat_limit = limit
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'daily_chat_limit': limit})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/chat-usage')
+@csrf_exempt
+@admin_required
+def api_chat_usage():
+    """获取所有用户的今日对话使用情况
+
+    返回(JSON):
+        - usage: [{user_id, username, daily_chat_limit, used_today, remaining}, ...]
+    """
+    from models import ChatUsage
+    from models import get_china_time
+    today = get_china_time().strftime('%Y-%m-%d')
+
+    users = User.query.filter_by(is_admin=False).order_by(User.id).all()
+    usage_map = {}
+    usages = ChatUsage.query.filter_by(usage_date=today).all()
+    for u in usages:
+        usage_map[u.user_id] = u.count
+
+    result = []
+    for user in users:
+        used = usage_map.get(user.id, 0)
+        limit = user.daily_chat_limit if user.daily_chat_limit is not None else 5
+        remaining = 999 if limit == -1 else max(0, limit - used)
+        result.append({
+            'user_id': user.id,
+            'username': user.username,
+            'daily_chat_limit': limit,
+            'used_today': used,
+            'remaining': remaining
+        })
+
+    return jsonify({'usage': result, 'date': today})
 
 

@@ -1690,6 +1690,12 @@
                     <span>故事管理</span>
                 </a>
 
+                <div class="menu-category">AI功能</div>
+                <a href="{{ url_for('admin.knowledge') }}" class="{{ 'active' if request.endpoint == 'admin.knowledge' }}">
+                    <i class="bi bi-database"></i>
+                    <span>知识库管理</span>
+                </a>
+
                 <div class="menu-category">系统</div>
                 <a href="{{ url_for('logout') }}" class="text-danger">
                     <i class="bi bi-box-arrow-right"></i>

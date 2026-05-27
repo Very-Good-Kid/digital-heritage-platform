@@ -1,0 +1,331 @@
+{% extends "admin/base.html" %}
+
+{% block title %}AI知识库管理 - 后台管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">AI知识库管理</h1>
+        <p class="page-subtitle">管理AI对话的知识库文件，上传文件后所有用户的对话都会参考知识库内容</p>
+    </div>
+    <div>
+        <button class="btn btn-gradient-primary" onclick="document.getElementById('upload-file-input').click()">
+            <i class="bi bi-cloud-upload me-2"></i>上传知识库文件
+        </button>
+        <input type="file" id="upload-file-input" accept=".pdf,.txt,.md,.docx" style="display:none" onchange="uploadFile(this)">
+    </div>
+</div>
+
+<!-- 上传状态 -->
+<div id="upload-status" class="mb-3" style="display:none">
+    <div class="alert alert-info">
+        <i class="bi bi-hourglass-split me-2" id="upload-status-icon"></i>
+        <span id="upload-status-text">正在上传并处理...</span>
+    </div>
+    <!-- 上传进度条 -->
+    <div class="progress mt-2" style="height:8px;display:none" id="upload-progress-wrap">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+             id="upload-progress-bar" role="progressbar" 
+             style="width:0%"></div>
+    </div>
+</div>
+
+<!-- 知识库文件列表 -->
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>文件名</th>
+                        <th>类型</th>
+                        <th>知识片段数</th>
+                        <th>上传时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="knowledge-table-body">
+                    <!-- 由JS动态加载 -->
+                </tbody>
+            </table>
+        </div>
+        <div id="empty-tip" class="text-center text-muted py-4" style="display:none">
+            <i class="bi bi-inbox" style="font-size:2rem"></i>
+            <p class="mt-2">暂无知识库文件，请点击上方按钮上传</p>
+            <p><small>支持 PDF / TXT / Markdown / DOCX 格式</small></p>
+        </div>
+    </div>
+</div>
+
+<!-- 知识库统计 -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <i class="bi bi-file-earmark-text" style="font-size:2rem;color:var(--primary-color)"></i>
+            <h3 id="stat-files">0</h3>
+            <small class="text-muted">知识库文件</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <i class="bi bi-puzzle" style="font-size:2rem;color:var(--info-color)"></i>
+            <h3 id="stat-chunks">0</h3>
+            <small class="text-muted">知识片段</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <i class="bi bi-chat-dots" style="font-size:2rem;color:var(--success-color)"></i>
+            <h3 id="stat-sessions">0</h3>
+            <small class="text-muted">对话会话</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <i class="bi bi-diagram-3" style="font-size:2rem;color:var(--warning-color)"></i>
+            <h3 id="stat-provider">-</h3>
+            <small class="text-muted">AI提供者</small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 页面加载时获取知识库列表
+    document.addEventListener('DOMContentLoaded', function() {
+        loadKnowledgeList();
+        loadStats();
+        checkAIHealth();
+    });
+
+    // ===== 检查AI服务健康状态 =====
+    function checkAIHealth() {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        fetch('/chat/api/health', {
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            const el = document.getElementById('stat-provider');
+            if (data.available) {
+                el.textContent = data.provider;
+                el.className = '';
+            } else {
+                el.textContent = '未就绪';
+                el.style.color = '#dc3545';
+            }
+            // 保存健康状态供上传时检查
+            window._aiHealth = data;
+        }).catch(() => {
+            document.getElementById('stat-provider').textContent = '未知';
+            window._aiHealth = {available: false, message: '无法检查AI服务状态'};
+        });
+    }
+
+    // ===== 加载知识库文件列表 =====
+    function loadKnowledgeList() {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        fetch('/chat/api/knowledge/list', {
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            const tbody = document.getElementById('knowledge-table-body');
+            const emptyTip = document.getElementById('empty-tip');
+
+            if (!data.files || data.files.length === 0) {
+                tbody.innerHTML = '';
+                emptyTip.style.display = 'block';
+                return;
+            }
+
+            emptyTip.style.display = 'none';
+
+            // 类型图标映射
+            const typeIcons = {
+                'pdf': 'bi-file-earmark-pdf text-danger',
+                'txt': 'bi-file-earmark-text text-info',
+                'md': 'bi-markdown text-primary',
+                'docx': 'bi-file-earmark-word text-primary'
+            };
+
+            tbody.innerHTML = data.files.map((f, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><i class="bi ${typeIcons[f.file_type] || 'bi-file-earmark'} me-1"></i>${f.filename}</td>
+                    <td><span class="badge bg-secondary">${f.file_type.toUpperCase()}</span></td>
+                    <td><span class="badge bg-info">${f.chunk_count} 片段</span></td>
+                    <td>${f.created_at}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${f.id}, '${f.filename}')">
+                            <i class="bi bi-trash me-1"></i>删除
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }).catch(err => {
+            console.error('加载知识库列表失败:', err);
+        });
+    }
+
+    // ===== 加载统计数据 =====
+    function loadStats() {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        // 统计知识库文件和片段
+        fetch('/chat/api/knowledge/list', {
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            const files = data.files || [];
+            document.getElementById('stat-files').textContent = files.length;
+            const totalChunks = files.reduce((sum, f) => sum + f.chunk_count, 0);
+            document.getElementById('stat-chunks').textContent = totalChunks;
+        });
+
+        // 对话会话数
+        fetch('/chat/api/sessions', {
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            document.getElementById('stat-sessions').textContent = (data.sessions || []).length;
+        });
+
+        // AI提供者由checkAIHealth动态设置
+    }
+
+    // ===== 上传文件（选择文件后先检查AI服务，再上传） =====
+    function uploadFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const statusDiv = document.getElementById('upload-status');
+        const statusText = document.getElementById('upload-status-text');
+        const statusIcon = document.getElementById('upload-status-icon');
+        const progressWrap = document.getElementById('upload-progress-wrap');
+        const progressBar = document.getElementById('upload-progress-bar');
+
+        // 重置状态
+        statusDiv.style.display = 'block';
+        statusDiv.querySelector('.alert').className = 'alert alert-info';
+        statusIcon.className = 'bi bi-hourglass me-2';
+        statusText.textContent = '正在检查AI服务状态...';
+        progressWrap.style.display = 'none';
+
+        // 先检查AI服务是否可用
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+
+        fetch('/chat/api/health', {
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(health => {
+            if (!health.available) {
+                // AI服务不可用，显示提示
+                statusDiv.querySelector('.alert').className = 'alert alert-warning';
+                statusIcon.className = 'bi bi-exclamation-triangle me-2';
+                statusText.textContent = health.message || 'AI服务不可用，请先启动Ollama或配置云API';
+                progressWrap.style.display = 'none';
+                setTimeout(() => { statusDiv.style.display = 'none'; }, 8000);
+                input.value = '';
+                return;
+            }
+
+            // AI服务可用，开始上传
+            statusIcon.className = 'bi bi-cloud-upload me-2';
+            statusText.textContent = `正在上传 "${file.name}" (0%)...`;
+            progressWrap.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+
+            // 上传进度事件
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = pct + '%';
+                    statusText.textContent = `正在上传 "${file.name}" (${pct}%)...`;
+                    if (pct >= 100) {
+                        statusText.textContent = `文件已上传，正在解析并向量化 "${file.name}"...`;
+                        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+                    }
+                }
+            });
+
+            xhr.addEventListener('load', function() {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+                        statusDiv.querySelector('.alert').className = 'alert alert-success';
+                        statusIcon.className = 'bi bi-check-circle me-2';
+                        statusText.textContent = data.message;
+                        progressBar.style.width = '100%';
+                        progressBar.className = 'progress-bar bg-success';
+                        progressWrap.style.display = 'none';
+                        loadKnowledgeList();
+                        loadStats();
+                    } else {
+                        statusDiv.querySelector('.alert').className = 'alert alert-danger';
+                        statusIcon.className = 'bi bi-exclamation-circle me-2';
+                        statusText.textContent = data.message || `上传失败 (HTTP ${xhr.status})`;
+                        progressBar.className = 'progress-bar bg-danger';
+                        progressBar.style.width = '100%';
+                    }
+                } catch (e) {
+                    statusDiv.querySelector('.alert').className = 'alert alert-danger';
+                    statusIcon.className = 'bi bi-exclamation-circle me-2';
+                    statusText.textContent = `服务器返回了无效响应 (HTTP ${xhr.status})`;
+                    progressBar.className = 'progress-bar bg-danger';
+                }
+                setTimeout(() => { statusDiv.style.display = 'none'; }, 6000);
+            });
+
+            xhr.addEventListener('error', function() {
+                statusDiv.querySelector('.alert').className = 'alert alert-danger';
+                statusIcon.className = 'bi bi-exclamation-circle me-2';
+                statusText.textContent = '网络错误，请检查连接后重试';
+                progressBar.className = 'progress-bar bg-danger';
+                progressBar.style.width = '100%';
+            });
+
+            xhr.addEventListener('abort', function() {
+                statusDiv.querySelector('.alert').className = 'alert alert-warning';
+                statusIcon.className = 'bi bi-exclamation-triangle me-2';
+                statusText.textContent = '上传已取消';
+            });
+
+            xhr.open('POST', '/chat/api/knowledge/upload');
+            xhr.setRequestHeader('X-CSRFToken', csrfToken);
+            xhr.send(formData);
+        }).catch(() => {
+            statusDiv.querySelector('.alert').className = 'alert alert-warning';
+            statusIcon.className = 'bi bi-exclamation-triangle me-2';
+            statusText.textContent = '无法检查AI服务状态，请刷新页面重试';
+            progressWrap.style.display = 'none';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+        });
+
+        input.value = '';
+    }
+
+    // ===== 删除文件 =====
+    function deleteFile(fileId, filename) {
+        if (!confirm(`确定删除知识库文件 "${filename}"？\n删除后相关片段将无法被AI检索。`)) return;
+
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        fetch(`/chat/api/knowledge/delete/${fileId}`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            if (data.success) {
+                loadKnowledgeList();
+                loadStats();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        });
+    }
+</script>
+{% endblock %}

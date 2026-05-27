@@ -1,4 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
+# 在所有import之前加载.env环境变量
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, Response, stream_with_context
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 
@@ -26,7 +30,8 @@ class CustomCSRFProtect(CSRFProtect):
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, timezone
 import os
-from models import db, User, DigitalAsset, DigitalWill, PlatformPolicy, Story, FAQ
+import requests
+from models import db, User, DigitalAsset, DigitalWill, PlatformPolicy, Story, FAQ, KnowledgeFile, KnowledgeChunk, ChatMessage, ChatUsage
 from utils.encryption import encrypt_data, decrypt_data
 from utils.pdf_generator import generate_will_pdf
 from config import config
@@ -66,7 +71,7 @@ def setup_fonts_on_startup():
         import sys
 
         # 运行字体安装脚本
-        script_path = os.path.join(os.path.dirname(__file__), 'install_fonts_runtime.py')
+        script_path = os.path.join(os.path.dirname(__file__), 'deploy', 'install_fonts_runtime.py')
         if os.path.exists(script_path):
             result = subprocess.run(
                 [sys.executable, script_path],
@@ -356,6 +361,53 @@ def init_default_faqs():
 _db_initialized = False
 _db_init_lock = False
 
+
+def _migrate_add_columns():
+    """自动迁移：为已有数据库表添加新列
+
+    SQLite的db.create_all()只创建新表，不会给已有表添加新列。
+    此函数检查并添加缺失的列，确保模型定义与数据库schema一致。
+    """
+    try:
+        # 检查SQLite还是PostgreSQL
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        is_sqlite = db_uri.startswith('sqlite')
+
+        if is_sqlite:
+            # SQLite: 直接用PRAGMA检查列
+            import sqlite3
+            db_path = db_uri.replace('sqlite:///', '')
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # users表: 添加 daily_chat_limit 列
+            cursor.execute('PRAGMA table_info(users)')
+            user_cols = [row[1] for row in cursor.fetchall()]
+            if 'daily_chat_limit' not in user_cols:
+                cursor.execute('ALTER TABLE users ADD COLUMN daily_chat_limit INTEGER DEFAULT 5')
+                print("[MIGRATE] users表添加 daily_chat_limit 列")
+
+            conn.commit()
+            conn.close()
+        else:
+            # PostgreSQL: 用信息schema检查列
+            with db.engine.connect() as conn:
+                # users表: daily_chat_limit
+                result = conn.execute(db.text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name='users' AND column_name='daily_chat_limit'"
+                ))
+                if not result.fetchone():
+                    conn.execute(db.text(
+                        'ALTER TABLE users ADD COLUMN daily_chat_limit INTEGER DEFAULT 5'
+                    ))
+                    conn.commit()
+                    print("[MIGRATE] users表添加 daily_chat_limit 列")
+
+        print("[OK] Database migration check complete")
+    except Exception as e:
+        print(f"[WARN] Migration check failed (non-critical): {e}")
+
 @app.before_request
 def initialize_database():
     """在第一个请求前初始化数据库
@@ -388,6 +440,9 @@ def initialize_database():
                 # 创建所有表
                 db.create_all()
                 print("[OK] Database tables created/verified")
+
+                # 自动迁移：为已有表添加新列（SQLite不支持ALTER TABLE ADD COLUMN的IF NOT EXISTS）
+                _migrate_add_columns()
 
                 # 导入 PolicyDetail 模型
                 from models import PolicyDetail
@@ -433,7 +488,7 @@ def initialize_database():
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # 设置响应编码
 @app.after_request
@@ -1398,6 +1453,23 @@ def generate_pdf(will_id):
         traceback.print_exc()
         flash(f'PDF生成失败：{str(e)}', 'error')
         return redirect(url_for('view_will', will_id=will_id))
+
+
+@app.route('/assets/print-list')
+@login_required
+def print_asset_list():
+    """生成并下载用户数字资产清单Excel文件"""
+    from utils.pdf_generator import generate_asset_list_xlsx
+    assets = DigitalAsset.query.filter_by(user_id=current_user.id).order_by(DigitalAsset.category).all()
+    try:
+        xlsx_path = generate_asset_list_xlsx(current_user, assets)
+        if xlsx_path and os.path.exists(xlsx_path):
+            return send_file(xlsx_path, as_attachment=True, download_name=f'数字资产清单_{current_user.username}.xlsx')
+        flash('资产清单生成失败', 'error')
+    except Exception as e:
+        print(f"Asset list xlsx error: {e}")
+        flash(f'资产清单生成失败：{str(e)}', 'error')
+    return redirect(url_for('assets_page'))
 
 @app.route('/wills/<int:will_id>/delete', methods=['POST'])
 @login_required
@@ -2701,7 +2773,7 @@ def download_inheritance_template(template_name):
         return redirect(url_for('inheritance_guide'))
 
     # 构建模板文件的完整路径
-    template_dir = os.path.join(os.path.dirname(__file__), '继承指引模板')
+    template_dir = os.path.join(os.path.dirname(__file__), 'docs', 'guides', '继承指引模板')
     file_path = os.path.join(template_dir, filename)
 
     # 检查文件是否存在
@@ -3024,6 +3096,596 @@ def initialize_sample_data():
         db.session.add(story)
 
     db.session.commit()
+
+# ============================================================
+# AI 对话功能路由
+# ============================================================
+import json
+import uuid
+from ai.document_parser import parse_document, get_supported_types
+from ai.chunker import split_text
+from ai.embedding import embed_texts
+from ai.rag import rag_query, get_chat_history, save_chat_message
+
+
+@app.route('/chat')
+@login_required
+def chat_page():
+    """AI对话页面 - 纯对话界面，知识库由后台管理员管理"""
+    return render_template('chat/index.html')
+
+
+@app.route('/chat/api/message', methods=['POST'])
+@login_required
+def chat_message():
+    """处理用户发送的聊天消息（非流式，返回完整JSON响应）
+    
+    请求体(JSON):
+        - message: 用户提问内容
+        - session_id: 会话ID（首次为空则自动生成）
+        - enable_search: 是否启用网络搜索(bool)
+        - image_base64: 图片Base64编码(可选，不含data:前缀)
+        - image_mime_type: 图片MIME类型(可选，默认image/jpeg)
+    
+    返回(JSON):
+        - answer: AI回答
+        - session_id: 会话ID
+        - sources: 引用的知识库来源
+        - search_used: 是否使用了网络搜索
+    """
+    # 每日对话次数限制检查
+    usage_check = _check_chat_limit(current_user.id)
+    if not usage_check['allowed']:
+        return jsonify({'error': usage_check['message']}), 429
+    data = request.get_json()
+    query = data.get('message', '').strip()
+    session_id = data.get('session_id', '')
+    enable_search = data.get('enable_search', True)
+    image_base64 = data.get('image_base64')    # 图片Base64，可选
+    image_mime = data.get('image_mime_type', 'image/jpeg')
+
+    if not query:
+        return jsonify({'error': '消息不能为空'}), 400
+
+    if not session_id:
+        session_id = str(uuid.uuid4())
+
+    try:
+        result = rag_query(
+            query=query,
+            user_id=current_user.id,
+            session_id=session_id,
+            enable_search=enable_search,
+            stream=False,
+            image_base64=image_base64,
+            image_mime_type=image_mime
+        )
+        return jsonify({
+            'answer': result['answer'],
+            'session_id': session_id,
+            'sources': result['sources'],
+            'search_used': result['search_used']
+        })
+    except Exception as e:
+        error_msg = str(e)
+        if 'Max retries exceeded' in error_msg or 'ConnectionError' in error_msg:
+            friendly = 'AI服务连接失败：Ollama未启动，请检查后重试'
+        elif 'timed out' in error_msg or 'timeout' in error_msg.lower():
+            friendly = 'AI响应超时：模型加载中，请稍后重试'
+        else:
+            friendly = f'AI服务暂时不可用: {error_msg}'
+        return jsonify({'error': friendly}), 500
+
+
+@app.route('/chat/api/stream', methods=['POST'])
+@login_required
+def chat_stream():
+    """处理用户发送的聊天消息（流式SSE输出，支持图片视觉问答）
+    
+    请求体(JSON): 同 chat_message
+    
+    返回(Server-Sent Events):
+        逐token推送AI回答，格式:
+        data: {"token": "你"}
+        data: {"token": "好"}
+        ...
+        data: {"done": true, "session_id": "xxx"}
+    """
+    # 每日对话次数限制检查
+    usage_check = _check_chat_limit(current_user.id)
+    if not usage_check['allowed']:
+        return jsonify({'error': usage_check['message']}), 429
+    data = request.get_json()
+    query = data.get('message', '').strip()
+    session_id = data.get('session_id', '')
+    enable_search = data.get('enable_search', True)
+    image_base64 = data.get('image_base64')    # 图片Base64，可选
+    image_mime = data.get('image_mime_type', 'image/jpeg')
+
+    # 图片大小检查（智谱AI GLM-4V限制约2MB，base64编码后约为原始1.37倍）
+    if image_base64 and len(image_base64) > 3 * 1024 * 1024:
+        return jsonify({'error': '图片太大，请上传不超过2MB的图片'}), 400
+
+    if not query:
+        return jsonify({'error': '消息不能为空'}), 400
+
+    if not session_id:
+        session_id = str(uuid.uuid4())
+
+    # 在生成器外提前捕获user_id（SSE生成器中请求上下文会丢失，current_user不可用）
+    user_id = current_user.id
+
+    # 豁免CSRF检查（SSE请求）
+    request._csrf_exempt = True
+
+    def generate():
+        """SSE生成器：逐token推送AI回答
+        注意：Flask SSE生成器在yield时请求上下文会丢失，
+        需要使用app.app_context()确保数据库操作等正常执行
+        """
+        full_answer = ""
+        with app.app_context():
+            try:
+                # 视觉问答(有图片)时用非流式，避免智谱AI视觉模型stream不兼容
+                use_stream = not image_base64
+                
+                result = rag_query(
+                    query=query,
+                    user_id=user_id,
+                    session_id=session_id,
+                    enable_search=enable_search,
+                    stream=use_stream,
+                    image_base64=image_base64,
+                    image_mime_type=image_mime
+                )
+                
+                if use_stream:
+                    # 流式模式：逐token输出
+                    for token in result:
+                        full_answer += token
+                        yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
+                else:
+                    # 非流式模式（视觉问答）：一次性输出完整回答
+                    full_answer = result.get('answer', '') if isinstance(result, dict) else str(result)
+                    yield f"data: {json.dumps({'token': full_answer}, ensure_ascii=False)}\n\n"
+
+                # 保存对话记录
+                user_content = query
+                if image_base64:
+                    user_content = f"[图片问答] {query}"
+                save_chat_message(user_id, session_id, 'user', user_content)
+                save_chat_message(user_id, session_id, 'assistant', full_answer)
+
+                # 记录每日使用次数+1
+                _increment_chat_usage(user_id)
+
+                yield f"data: {json.dumps({'done': True, 'session_id': session_id}, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                error_msg = str(e)
+                # 友好化常见错误提示
+                if 'Max retries exceeded' in error_msg or 'ConnectionError' in error_msg:
+                    friendly = 'AI服务连接失败：Ollama未启动或网络不可达，请检查Ollama是否正在运行'
+                elif 'timed out' in error_msg or 'timeout' in error_msg.lower():
+                    friendly = 'AI响应超时：模型正在加载中或网络较慢，请稍后重试（首次加载约需1-2分钟）'
+                else:
+                    friendly = f'AI服务暂时不可用: {error_msg}'
+                yield f"data: {json.dumps({'error': friendly}, ensure_ascii=False)}\n\n"
+
+    return app.response_class(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+        }
+    )
+
+
+@app.route('/chat/api/history/<session_id>')
+@login_required
+def chat_history(session_id):
+    """获取指定会话的对话历史
+    
+    返回(JSON):
+        - messages: 消息列表
+        - session_id: 会话ID
+    """
+    messages = get_chat_history(current_user.id, session_id, limit=100)
+    return jsonify({
+        'messages': messages,
+        'session_id': session_id
+    })
+
+
+@app.route('/chat/api/health')
+@login_required
+def ai_health_check():
+    """检查AI服务是否可用（上传前前端调用，提前发现问题）
+    
+    检查项:
+      - 智谱AI API密钥(必需: 对话+视觉)
+      - SiliconFlow API密钥(可选: 免费Embedding+备选对话)
+      - Embedding提供者配置
+    
+    返回(JSON):
+        - available: 是否可用
+        - providers: 已配置的提供者列表
+        - message: 状态说明
+    """
+    if not current_user.is_admin:
+        return jsonify({'available': False, 'providers': [], 'message': '仅管理员可检查'}), 403
+
+    providers = []
+    issues = []
+
+    # 智谱AI (必需)
+    zhipu_key = os.environ.get('ZHIPU_API_KEY', '')
+    if zhipu_key:
+        providers.append('智谱AI(对话+视觉)')
+    else:
+        issues.append('未设置ZHIPU_API_KEY')
+
+    # SiliconFlow (可选)
+    sf_key = os.environ.get('SILICONFLOW_API_KEY', '')
+    if sf_key:
+        providers.append('SiliconFlow(Embedding+备选对话)')
+    else:
+        issues.append('未设置SILICONFLOW_API_KEY(可选，建议配置以使用免费Embedding)')
+
+    # Embedding提供者
+    embed_provider = os.environ.get('EMBEDDING_PROVIDER', 'siliconflow')
+    if embed_provider == 'siliconflow' and not sf_key:
+        issues.append(f'Embedding设为siliconflow但未配置SILICONFLOW_API_KEY')
+
+    available = bool(zhipu_key)  # 至少需要智谱AI
+    msg = '、'.join(providers) + ' 已配置' if providers else '未配置任何AI服务'
+    if issues:
+        msg += ' | 注意: ' + '；'.join(issues)
+
+    return jsonify({'available': available, 'providers': providers, 'message': msg})
+
+
+@app.route('/chat/api/knowledge/upload', methods=['POST'])
+@login_required
+def upload_knowledge():
+    """管理员上传知识库文件（普通用户无权上传）
+    
+    注意：此路由豁免CSRF检查，因为FormData+XHR上传的CSRF处理
+    在部分浏览器环境下不稳定，权限已通过login_required+is_admin保障
+    
+    表单数据:
+        - file: 上传的文件（支持 pdf/txt/md/docx）
+    
+    处理流程:
+        1. 验证文件类型
+        2. 读取文件二进制数据
+        3. 解析文档提取文本
+        4. 将文本切分为块
+        5. 对每个文本块生成向量
+        6. 存入数据库（所有用户共享此知识库）
+    
+    返回(JSON):
+        - success: 是否成功
+        - message: 提示信息
+        - chunk_count: 切分后的文本块数量
+    """
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': '仅管理员可管理知识库'}), 403
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': '未选择文件'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'success': False, 'message': '文件名不能为空'}), 400
+
+    # 获取文件类型（安全处理文件名）
+    filename = file.filename
+    file_type = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    supported = get_supported_types()
+
+    if file_type not in supported:
+        return jsonify({
+            'success': False,
+            'message': f'不支持的文件类型: {file_type}，支持: {", ".join(supported)}'
+        }), 400
+
+    # 检查同名文件是否已存在，防止重复上传
+    existing = KnowledgeFile.query.filter_by(filename=filename).first()
+    if existing:
+        return jsonify({
+            'success': False,
+            'message': f'文件 "{filename}" 已存在（{existing.chunk_count}个片段，上传于{existing.created_at.strftime("%Y-%m-%d %H:%M") if existing.created_at else ""}），请先删除后再上传'
+        }), 400
+
+    try:
+        file_data = file.read()
+
+        if len(file_data) > 10 * 1024 * 1024:
+            return jsonify({'success': False, 'message': '文件大小不能超过10MB'}), 400
+
+        # ① 解析文档提取文本
+        text = parse_document(file_data, file_type)
+
+        if not text.strip():
+            return jsonify({'success': False, 'message': '文档内容为空或无法提取文本'}), 400
+
+        # ② 切分文本为块
+        chunks = split_text(text, chunk_size=500, chunk_overlap=50)
+
+        if not chunks:
+            return jsonify({'success': False, 'message': '文档切分后无有效内容'}), 400
+
+        # ③ 生成向量（可能耗时较长，尤其是Ollama本地模型）
+        try:
+            embeddings = embed_texts(chunks)
+        except Exception as emb_err:
+            return jsonify({
+                'success': False,
+                'message': f'向量化失败，请检查AI服务是否正常运行: {str(emb_err)}'
+            }), 500
+
+        # ④ 存入数据库（user_id为管理员ID，但所有用户共享检索）
+        # 带重试的数据库操作，应对Neon冷启动
+        max_db_retries = 3
+        for attempt in range(max_db_retries):
+            try:
+                knowledge_file = KnowledgeFile(
+                    user_id=current_user.id,
+                    filename=filename,
+                    file_type=file_type,
+                    file_data=file_data,
+                    chunk_count=len(chunks)
+                )
+                db.session.add(knowledge_file)
+                db.session.flush()
+
+                for idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+                    chunk = KnowledgeChunk(
+                        file_id=knowledge_file.id,
+                        chunk_index=idx,
+                        content=chunk_text,
+                        embedding=json.dumps(embedding, ensure_ascii=False)
+                    )
+                    db.session.add(chunk)
+
+                db.session.commit()
+                break
+            except Exception as db_err:
+                db.session.rollback()
+                if attempt < max_db_retries - 1:
+                    import time
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                raise db_err
+
+        return jsonify({
+            'success': True,
+            'message': f'成功上传并处理文件，共 {len(chunks)} 个知识片段',
+            'chunk_count': len(chunks)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'处理文件失败: {str(e)}'}), 500
+
+upload_knowledge.csrf_exempt = True
+
+
+@app.route('/chat/api/knowledge/list')
+@login_required
+def list_knowledge():
+    """获取知识库文件列表（管理员查看全部，普通用户无权查看）
+    
+    返回(JSON):
+        - files: 文件列表
+    """
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': '仅管理员可查看知识库'}), 403
+
+    # Neon休眠后首次查询可能失败，最多重试3次
+    for attempt in range(3):
+        try:
+            files = KnowledgeFile.query.all()
+            return jsonify({
+                'files': [{
+                    'id': f.id,
+                    'filename': f.filename,
+                    'file_type': f.file_type,
+                    'chunk_count': f.chunk_count,
+                    'created_at': f.created_at.strftime('%Y-%m-%d %H:%M') if f.created_at else ''
+                } for f in files]
+            })
+        except Exception as e:
+            db.session.rollback()
+            if attempt < 2:
+                import time
+                time.sleep(2 * (attempt + 1))
+                continue
+            return jsonify({'files': [], 'error': f'数据库连接异常，请刷新页面重试: {str(e)}'})
+
+
+@app.route('/chat/api/knowledge/delete/<int:file_id>', methods=['POST'])
+@login_required
+def delete_knowledge(file_id):
+    """删除指定的知识库文件（仅管理员）
+    
+    Args:
+        file_id: 知识库文件ID
+    
+    返回(JSON):
+        - success: 是否成功
+        - message: 提示信息
+    """
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': '仅管理员可删除知识库'}), 403
+
+    kf = db.session.get(KnowledgeFile, file_id)
+    if not kf:
+        return jsonify({'success': False, 'message': '文件不存在'}), 404
+
+    try:
+        db.session.delete(kf)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '已删除'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'删除失败: {str(e)}'}), 500
+
+delete_knowledge.csrf_exempt = True
+
+
+@app.route('/chat/api/sessions')
+@login_required
+def list_sessions():
+    """获取用户的对话会话列表
+
+    返回(JSON):
+        - sessions: 会话列表，每项包含 session_id, last_time, message_count, title
+    """
+    sessions = db.session.query(
+        ChatMessage.session_id,
+        db.func.max(ChatMessage.created_at).label('last_time'),
+        db.func.count(ChatMessage.id).label('message_count')
+    ).filter_by(user_id=current_user.id).group_by(
+        ChatMessage.session_id
+    ).order_by(db.desc('last_time')).limit(20).all()
+
+    result = []
+    for s in sessions:
+        first_msg = ChatMessage.query.filter_by(
+            user_id=current_user.id, session_id=s.session_id, role='user'
+        ).order_by(ChatMessage.created_at.asc()).first()
+        title = first_msg.content[:30] if first_msg else '新对话'
+        if first_msg and len(first_msg.content) > 30:
+            title += '...'
+        result.append({
+            'session_id': s.session_id,
+            'last_time': s.last_time.strftime('%Y-%m-%d %H:%M') if s.last_time else '',
+            'message_count': s.message_count,
+            'title': title
+        })
+
+    return jsonify({'sessions': result})
+
+
+# ==============================================================================
+# 对话次数限制
+# ==============================================================================
+def _check_chat_limit(user_id):
+    """检查用户今日对话次数是否超限
+
+    Args:
+        user_id: 用户ID(int)
+
+    Returns:
+        dict: {'allowed': bool, 'remaining': int, 'limit': int, 'message': str}
+    """
+    today = get_china_time().strftime('%Y-%m-%d')
+    user = db.session.get(User, user_id)
+    limit = user.daily_chat_limit if user and user.daily_chat_limit is not None else 5
+
+    # 管理员不受限制; -1表示无限制
+    if user and (user.is_admin or limit == -1):
+        return {'allowed': True, 'remaining': 999, 'limit': limit, 'message': ''}
+
+    usage = ChatUsage.query.filter_by(user_id=user_id, usage_date=today).first()
+    current_count = usage.count if usage else 0
+    remaining = max(0, limit - current_count)
+
+    if current_count >= limit:
+        return {
+            'allowed': False,
+            'remaining': 0,
+            'limit': limit,
+            'message': f'今日对话次数已达上限({limit}次)，明天再来吧'
+        }
+    return {'allowed': True, 'remaining': remaining, 'limit': limit, 'message': ''}
+
+
+def _increment_chat_usage(user_id):
+    """用户今日对话次数+1
+
+    Args:
+        user_id: 用户ID(int)
+    """
+    today = get_china_time().strftime('%Y-%m-%d')
+    try:
+        usage = ChatUsage.query.filter_by(user_id=user_id, usage_date=today).first()
+        if usage:
+            usage.count += 1
+        else:
+            usage = ChatUsage(user_id=user_id, usage_date=today, count=1)
+            db.session.add(usage)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"[WARN] 记录对话使用量失败: {e}")
+
+
+@app.route('/chat/api/usage')
+@login_required
+def chat_usage_info():
+    """获取当前用户的对话使用情况
+
+    返回(JSON):
+        - remaining: 今日剩余次数
+        - limit: 每日上限
+        - used: 今日已使用
+    """
+    today = get_china_time().strftime('%Y-%m-%d')
+    user = current_user
+    limit = user.daily_chat_limit if user.daily_chat_limit is not None else 5
+
+    if user.is_admin or limit == -1:
+        return jsonify({'remaining': 999, 'limit': limit, 'used': 0})
+
+    usage = ChatUsage.query.filter_by(user_id=user.id, usage_date=today).first()
+    used = usage.count if usage else 0
+    return jsonify({'remaining': max(0, limit - used), 'limit': limit, 'used': used})
+
+
+@app.route('/chat/api/sessions/<session_id>', methods=['DELETE'])
+@login_required
+def delete_session(session_id):
+    """删除指定会话及其所有消息
+
+    Args:
+        session_id: 会话ID(str)
+
+    返回(JSON):
+        - success: 是否成功
+    """
+    try:
+        ChatMessage.query.filter_by(user_id=current_user.id, session_id=session_id).delete()
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+delete_session.csrf_exempt = True
+
+
+@app.route('/chat/api/sessions/title/<session_id>')
+@login_required
+def session_title(session_id):
+    """获取会话的第一条用户消息作为标题
+
+    Args:
+        session_id: 会话ID(str)
+
+    返回(JSON):
+        - title: 会话标题(第一条用户消息，截断至30字)
+    """
+    first_msg = ChatMessage.query.filter_by(
+        user_id=current_user.id, session_id=session_id, role='user'
+    ).order_by(ChatMessage.created_at.asc()).first()
+    title = first_msg.content[:30] if first_msg else '新对话'
+    if first_msg and len(first_msg.content) > 30:
+        title += '...'
+    return jsonify({'title': title})
+
 
 # 错误处理
 @app.errorhandler(404)

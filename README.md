@@ -24,16 +24,19 @@
 - 数字资产继承导航
 - 故事墙
 - 常见问题解答（FAQ）
-- 后台管理系统
+- **AI智能对话**：RAG检索增强 + 流式SSE输出 + 视觉问答(图片理解) + 每日次数限制
+- **AI知识库管理**：后台管理员上传文档构建知识库（PDF/TXT/MD/DOCX）
+- 后台管理系统（用户管理、AI对话次数控制、知识库管理）
 
 ## 技术栈
 
 - **后端**: Flask 3.0.0
-- **数据库**: SQLite (本地) / PostgreSQL (生产)
-- **前端**: Bootstrap 5, Chart.js
+- **数据库**: SQLite (本地) / Neon PostgreSQL (生产)
+- **前端**: Bootstrap 5, Chart.js, marked.js
 - **认证**: Flask-Login
 - **安全**: Flask-WTF (CSRF保护)
 - **加密**: Fernet 对称加密 + PBKDF2HMAC 密钥派生 (双层加密方案)
+- **AI**: 智谱AI(对话+视觉) + SiliconFlow(免费Embedding+备选对话) + RAG + Tavily搜索
 
 ### 加密技术说明
 
@@ -53,11 +56,21 @@
    - 支持向后兼容,可灵活切换加密方式
    - 符合《数据安全法》相关合规要求
 
+### AI技术说明
+
+项目采用**双后端**方案,最大化免费额度:
+
+| 用途 | 主模型 | 备选模型 | 说明 |
+|------|--------|----------|------|
+| 文本对话 | 智谱AI glm-4-flash | SiliconFlow Qwen2.5-7B | 429排队时自动切换 |
+| 视觉问答 | 智谱AI glm-4.6v-flash | glm-4.1v-thinking-flash | SiliconFlow无免费视觉模型 |
+| 文本向量化 | SiliconFlow bge-large-zh-v1.5 | 智谱AI embedding-3 | 默认SiliconFlow(免费),中文专用 |
+
 ## 本地开发
 
 ### 环境要求
 
-- Python 3.8+
+- Python 3.10+
 - pip
 
 ### 安装步骤
@@ -65,7 +78,7 @@
 1. 克隆项目
 ```bash
 git clone <repository-url>
-cd demo - codebuddy
+cd V1.0-迭代中
 ```
 
 2. 创建虚拟环境
@@ -88,6 +101,11 @@ python app.py
 
 应用将在 `http://localhost:5000` 启动。
 
+5. 创建管理员
+```bash
+python scripts/create_admin.py
+```
+
 ## 部署到 Render
 
 ### 方法一：通过 render.yaml（推荐）
@@ -96,7 +114,7 @@ python app.py
 2. 登录 [Render](https://render.com)
 3. 点击 "New +" → "Web Service"
 4. 连接你的 GitHub 仓库
-5. Render 会自动检测 `render.yaml` 文件
+5. Render 会自动检测 `deploy/render.yaml` 文件
 6. 点击 "Create Web Service"
 
 ### 方法二：手动配置
@@ -108,107 +126,162 @@ python app.py
 
 **构建和部署**
 - **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `gunicorn app:app`
+- **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120`
 
 **环境变量**
 - `FLASK_ENV`: `production`
 - `SECRET_KEY`: (自动生成或自定义)
-- `DATABASE_URL`: Neon PostgreSQL 连接字符串（可选）
-- `RENDER_DATA_DIR`: `/opt/render/project/data`
-
-**持久化磁盘**
-- **Disk Name**: `data`
-- **Size**: `1 GB`
-- **Mount Path**: `/opt/render/project/data`
+- `DATABASE_URL`: Neon PostgreSQL 连接字符串
+- `ZHIPU_API_KEY`: 智谱AI API密钥（必需）
+- `SILICONFLOW_API_KEY`: SiliconFlow API密钥（推荐，免费Embedding）
 
 5. 点击 "Create Web Service"
 
-### 数据持久化
-
-应用使用 Render 的持久化磁盘来存储：
-- SQLite 数据库文件（如未使用 PostgreSQL）
-- 上传的文件
-- 生成的 PDF 文件
-
 ### 首次部署后
 
-部署完成后，访问应用并：
-1. 注册一个管理员账户
-2. 在数据库中将该用户的 `is_admin` 字段设置为 `True`
-3. 使用管理员账户登录后台管理系统
+部署完成后：
+1. 在Render Shell中运行 `python scripts/create_admin.py` 创建管理员
+2. 使用管理员账户登录后台管理系统
+3. 在"AI功能→知识库管理"中上传法律文档构建知识库
 
-## 数据库同步
+## 数据库说明
 
-### 同步策略
+### 本地与云端分离
 
-- **同步**: FAQ 数据（公开内容）
+| 环境 | 数据库 | 说明 |
+|------|--------|------|
+| 本地开发 | SQLite | `.env`中不设DATABASE_URL，使用instance/digital_heritage.db |
+| 线上生产 | Neon PostgreSQL | 免费版5分钟无活动后休眠，首次请求冷启动2-5秒 |
+
+### 数据同步
+
+- **同步**: 知识库数据（管理员上传的法律文档）
 - **不同步**: 用户数据、资产数据、遗嘱数据（涉及隐私）
 
-### 同步 FAQ 数据
-
 ```bash
-# 从本地导出 FAQ 数据到 Neon PostgreSQL
-python sync_faq_to_neon.py
+# 知识库同步（本地SQLite → 云端Neon）
+python scripts/sync_knowledge_to_neon.py           # 执行同步
+python scripts/sync_knowledge_to_neon.py --dry-run # 仅预览
 ```
-
-详细说明请参考 [RENDER_SYNC_GUIDE.md](RENDER_SYNC_GUIDE.md)。
 
 ## 环境变量
 
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `FLASK_ENV` | 运行环境 | `production` |
-| `SECRET_KEY` | Flask 密钥 | 自动生成 |
-| `DATABASE_URL` | PostgreSQL 连接字符串 | - |
-| `RENDER_DATA_DIR` | 数据目录 | `/opt/render/project/data` |
+| 变量名 | 必需 | 说明 | 默认值 |
+|--------|------|------|--------|
+| `SECRET_KEY` | 是 | Flask密钥 | 自动生成 |
+| `ZHIPU_API_KEY` | 是 | 智谱AI密钥（对话+视觉） | - |
+| `SILICONFLOW_API_KEY` | 推荐 | SiliconFlow密钥（免费Embedding+备选对话） | - |
+| `DATABASE_URL` | 线上 | Neon PostgreSQL连接串 | SQLite |
+| `NEON_DATABASE_URL` | 否 | 仅同步脚本使用 | - |
+| `EMBEDDING_PROVIDER` | 否 | Embedding提供者 | `siliconflow` |
+| `TAVILY_API_KEY` | 否 | Tavily搜索密钥（不设则禁用搜索） | - |
 
 ## 项目结构
 
 ```
-demo - codebuddy/
+故里/
+├── app.py                 # 主应用文件
+├── config.py              # 配置文件
+├── models.py              # 数据库模型
+├── requirements.txt       # Python 依赖
+├── .env                   # 环境变量
+│
+├── ai/                    # AI智能对话模块
+│   ├── __init__.py
+│   ├── llm.py             # 智谱AI(主)+SiliconFlow(备)
+│   ├── embedding.py       # SiliconFlow(免费)+智谱AI(备)
+│   ├── rag.py             # RAG核心
+│   ├── search.py          # 网络搜索(Tavily)
+│   ├── chunker.py         # 文本分块
+│   └── document_parser.py # 文档解析
+│
 ├── admin/                 # 后台管理模块
 │   ├── __init__.py
 │   ├── views.py
 │   ├── stats.py
 │   ├── crud.py
-│   └── decorators.py
+│   ├── auth.py
+│   ├── decorators.py
+│   ├── middleware.py
+│   └── api_format.py
+│
 ├── config/                # 配置模块
+│   └── tenant.py
+│
 ├── utils/                 # 工具模块
+│   ├── __init__.py
 │   ├── encryption.py      # 加密工具
+│   ├── fonts.py           # 字体管理
 │   └── pdf_generator.py   # PDF 生成
+│
+├── scripts/               # 运维脚本
+│   ├── create_admin.py    # 创建管理员
+│   ├── reset_admin_pwd.py # 重置管理员密码
+│   ├── init_db.py         # 初始化数据库
+│   └── sync_knowledge_to_neon.py # 知识库同步
+│
+├── docs/                  # 文档与业务资料
+│   ├── AI_CONFIG_GUIDE.md # AI配置指南
+│   ├── DEPLOYMENT_GUIDE.md # 部署指南
+│   ├── CHANGELOG.md       # 更新日志
+│   └── guides/            # 继承指引PDF
+│       ├── 继承指引流程/   # 平台操作流程PDF(10个)
+│       └── 继承指引模板/   # 法律模板PDF(4个)
+│
+├── deploy/                # 部署配置
+│   ├── render.yaml        # Render部署配置
+│   ├── render-build.sh    # Render构建脚本
+│   ├── render_init.py     # Render初始化
+│   ├── Dockerfile         # Docker构建
+│   ├── Procfile           # 进程配置
+│   ├── runtime.txt        # Python版本
+│   ├── install_fonts_runtime.py # 运行时字体安装
+│   ├── install_fonts.sh   # Shell字体安装
+│   └── 启动网站.bat       # 本地启动
+│
 ├── templates/             # 前端模板
-│   ├── admin/            # 后台管理模板
-│   ├── auth/             # 认证模板
-│   ├── assets/           # 资产管理模板
-│   ├── dashboard/        # 仪表盘模板
-│   ├── faq/              # FAQ 模板
-│   ├── inheritance-guide/# 继承导航模板
-│   ├── policies/         # 平台政策模板
-│   ├── stories/          # 故事墙模板
-│   └── wills/            # 遗嘱模板
+│   ├── base.html          # 基础模板
+│   ├── index.html         # 首页
+│   ├── about.html         # 关于页
+│   ├── auth/              # 认证(登录/注册)
+│   ├── assets/            # 资产管理
+│   ├── dashboard/         # 用户仪表盘
+│   ├── wills/             # 遗嘱管理
+│   ├── policies/          # 平台政策
+│   ├── inheritance/       # 继承导航
+│   ├── inheritance-guide/ # 继承指引
+│   ├── chat/              # AI智能对话
+│   ├── faq/               # FAQ
+│   ├── care/              # 关怀
+│   ├── errors/            # 错误页(404/500)
+│   └── admin/             # 后台管理
+│       ├── base.html      # 后台基模板
+│       ├── dashboard.html # 仪表盘
+│       ├── users.html     # 用户管理
+│       ├── assets.html    # 资产管理
+│       ├── wills.html     # 遗嘱管理
+│       ├── policies.html  # 政策管理
+│       ├── stories.html   # 故事墙管理
+│       ├── faqs.html      # FAQ管理
+│       ├── knowledge.html # 知识库管理
+│       ├── settings.html  # 系统设置
+│       └── sync.html      # 数据同步
+│
 ├── static/                # 静态文件
-│   ├── fonts/            # 字体文件
-│   └── templates/        # PDF 模板
-├── instance/              # 实例数据
-│   ├── digital_heritage.db  # SQLite 数据库
-│   └── temp_pdfs/        # 临时 PDF 文件
-├── app.py                 # 主应用文件
-├── models.py              # 数据库模型
-├── config.py              # 配置文件
-├── requirements.txt       # Python 依赖
-├── render.yaml            # Render 配置
-├── Procfile               # 进程文件
-├── CHANGELOG.md           # 更新日志
-└── README.md              # 项目说明
+│   ├── fonts/             # 字体文件
+│   ├── templates/         # PDF 模板
+│   └── uploads/           # 用户上传
+│
+└── instance/              # 实例数据
+    ├── digital_heritage.db # SQLite 数据库
+    └── temp_pdfs/         # 临时 PDF 文件
 ```
 
 ## 文档
 
-- [CHANGELOG.md](CHANGELOG.md) - 更新日志
-- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - 部署指南
-- [RENDER_SYNC_GUIDE.md](RENDER_SYNC_GUIDE.md) - 数据同步指南
-- [NEON_SETUP_GUIDE.md](NEON_SETUP_GUIDE.md) - Neon 数据库配置指南
-- [DOCS_INDEX.md](DOCS_INDEX.md) - 文档索引
+- [AI配置指南](docs/AI_CONFIG_GUIDE.md) - AI功能配置说明（双后端方案）
+- [部署指南](docs/DEPLOYMENT_GUIDE.md) - Render云服务部署指南
+- [更新日志](docs/CHANGELOG.md) - 版本更新记录
 
 ## 许可证
 

@@ -28,8 +28,9 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)  # 是否为管理员
-    is_active = db.Column(db.Boolean, default=True)  # 是否激活
+    is_admin = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    daily_chat_limit = db.Column(db.Integer, default=5)  # 每日AI对话次数限制，默认5次
     created_at = db.Column(db.DateTime, default=get_china_time)
     updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)
 
@@ -152,3 +153,72 @@ class FAQ(db.Model):
 
     def __repr__(self):
         return f'<FAQ {self.question}>'
+
+
+class KnowledgeFile(db.Model):
+    """知识库文件模型 - 存储用户上传的知识库源文件"""
+    __tablename__ = 'knowledge_files'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    filename = db.Column(db.String(255), nullable=False)  # 原始文件名
+    file_type = db.Column(db.String(20), nullable=False)   # 文件类型: pdf/txt/md/docx
+    file_data = db.Column(db.LargeBinary)                   # 文件二进制数据(存入DB,避免Render磁盘丢失)
+    chunk_count = db.Column(db.Integer, default=0)          # 切分后的文本块数量
+    created_at = db.Column(db.DateTime, default=get_china_time)
+
+    # 关系: 一个文件对应多个文本块
+    chunks = db.relationship('KnowledgeChunk', backref='source_file', lazy='dynamic',
+                             cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<KnowledgeFile {self.filename}>'
+
+
+class KnowledgeChunk(db.Model):
+    """知识库文本块模型 - 存储切分后的文本片段及其向量"""
+    __tablename__ = 'knowledge_chunks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('knowledge_files.id'), nullable=False, index=True)
+    chunk_index = db.Column(db.Integer, nullable=False)     # 在源文件中的块序号
+    content = db.Column(db.Text, nullable=False)             # 原文内容
+    embedding = db.Column(db.Text, nullable=True)            # 向量数据(JSON格式存储的浮点数组)
+    created_at = db.Column(db.DateTime, default=get_china_time)
+
+    def __repr__(self):
+        return f'<KnowledgeChunk file_id={self.file_id} idx={self.chunk_index}>'
+
+
+class ChatMessage(db.Model):
+    """对话消息模型 - 存储AI对话的聊天记录"""
+    __tablename__ = 'chat_messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    session_id = db.Column(db.String(36), nullable=False, index=True)
+    role = db.Column(db.String(10), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    sources = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=get_china_time)
+
+    def __repr__(self):
+        return f'<ChatMessage {self.role} session={self.session_id}>'
+
+
+class ChatUsage(db.Model):
+    """对话使用量模型 - 记录每位用户每日的AI对话次数"""
+    __tablename__ = 'chat_usage'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    usage_date = db.Column(db.String(10), nullable=False, index=True)  # 日期格式 YYYY-MM-DD
+    count = db.Column(db.Integer, default=0)                            # 当日已使用次数
+    created_at = db.Column(db.DateTime, default=get_china_time)
+    updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)
+
+    # 同一用户同一天唯一
+    __table_args__ = (db.UniqueConstraint('user_id', 'usage_date', name='uq_user_date'),)
+
+    def __repr__(self):
+        return f'<ChatUsage user={self.user_id} date={self.usage_date} count={self.count}>'

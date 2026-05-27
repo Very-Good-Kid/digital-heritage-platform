@@ -70,4 +70,7 @@ htmlcov/
 # Documentation
 docs/_build/
 
-.codeartsdoer
+# AI Tools
+.codeartsdoer/
+.codebuddy/
+.arts/
