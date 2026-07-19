@@ -9,11 +9,11 @@ from flask import current_app
 from ai.embedding import embed_single, cosine_similarity
 from ai.llm import chat, get_system_prompt, build_image_message
 from ai.search import search_web, format_search_results
-from models import db, KnowledgeChunk, KnowledgeFile, ChatMessage
+from models import db, KnowledgeChunk, KnowledgeFile, ChatMessage, ExternalKnowledge, ExternalKnowledgeChunk
 
 
 def retrieve_knowledge(query, top_k=5, similarity_threshold=0.3):
-    """从知识库中检索与问题最相关的文本块
+    """从知识库中检索与问题最相关的文本块（包含本地知识库和外部知识库）
     
     Args:
         query: 用户提问(str)
@@ -26,49 +26,45 @@ def retrieve_knowledge(query, top_k=5, similarity_threshold=0.3):
             - source: 来源文件名
             - similarity: 与问题的相似度得分
             - chunk_id: 文本块ID
-    
-    检索流程:
-        1. 检查知识库是否有数据，无数据则直接返回空列表
-        2. 将用户问题转化为向量
-        3. 遍历知识库中所有文本块的向量
-        4. 计算余弦相似度
-        5. 按相似度降序排列，返回top_k个结果
     """
+    scored_chunks = []
+
     # 先检查知识库是否有数据，避免无意义地调用embedding API
     try:
-        chunk_count = KnowledgeChunk.query.filter(KnowledgeChunk.embedding.isnot(None)).count()
-        if chunk_count == 0:
+        local_count = KnowledgeChunk.query.filter(KnowledgeChunk.embedding.isnot(None)).count()
+        external_count = ExternalKnowledgeChunk.query.filter(
+            ExternalKnowledgeChunk.embedding.isnot(None)
+        ).join(ExternalKnowledge).filter(ExternalKnowledge.is_active == True).count()
+        if local_count + external_count == 0:
             return []
     except Exception:
-        # 数据库表可能尚未创建，返回空列表
-        return []
+        try:
+            local_count = KnowledgeChunk.query.filter(KnowledgeChunk.embedding.isnot(None)).count()
+            if local_count == 0:
+                return []
+        except Exception:
+            return []
 
-    # 将问题向量化（可能因embedding服务不可用而失败，需捕获异常）
+    # 将问题向量化
     try:
         query_embedding = embed_single(query)
     except Exception as e:
         print(f"[WARN] Embedding失败，跳过知识库检索: {e}")
         return []
 
-    # 获取所有有向量的知识库文本块
+    # 获取本地知识库文本块
     try:
         chunks = KnowledgeChunk.query.filter(KnowledgeChunk.embedding.isnot(None)).all()
     except Exception as e:
         db.session.rollback()
         print(f"[WARN] 查询知识库失败: {e}")
-        return []
+        chunks = []
 
-    if not chunks:
-        return []
-
-    # 3. 计算每个块与问题的相似度
-    scored_chunks = []
     for chunk in chunks:
         try:
             chunk_embedding = json.loads(chunk.embedding)
             similarity = cosine_similarity(query_embedding, chunk_embedding)
             if similarity >= similarity_threshold:
-                # 获取来源文件名
                 source_file = KnowledgeFile.query.get(chunk.file_id)
                 source_name = source_file.filename if source_file else "未知来源"
                 scored_chunks.append({
@@ -80,7 +76,34 @@ def retrieve_knowledge(query, top_k=5, similarity_threshold=0.3):
         except (json.JSONDecodeError, TypeError):
             continue
 
-    # 4. 按相似度降序排列，取top_k
+    # 获取外部知识库文本块（仅启用的链接）
+    try:
+        active_ids = [lk.id for lk in ExternalKnowledge.query.filter_by(is_active=True).all()]
+        if active_ids:
+            ext_chunks = ExternalKnowledgeChunk.query.filter(
+                ExternalKnowledgeChunk.embedding.isnot(None),
+                ExternalKnowledgeChunk.external_id.in_(active_ids)
+            ).all()
+            for chunk in ext_chunks:
+                try:
+                    chunk_embedding = json.loads(chunk.embedding)
+                    similarity = cosine_similarity(query_embedding, chunk_embedding)
+                    if similarity >= similarity_threshold:
+                        source_link = ExternalKnowledge.query.get(chunk.external_id)
+                        source_name = source_link.name if source_link else "外部知识库"
+                        scored_chunks.append({
+                            'content': chunk.content,
+                            'source': source_name,
+                            'similarity': round(similarity, 4),
+                            'chunk_id': chunk.id
+                        })
+                except (json.JSONDecodeError, TypeError):
+                    continue
+    except Exception as e:
+        db.session.rollback()
+        print(f"[WARN] 查询外部知识库失败: {e}")
+
+    # 按相似度降序排列，取top_k
     scored_chunks.sort(key=lambda x: x['similarity'], reverse=True)
     return scored_chunks[:top_k]
 

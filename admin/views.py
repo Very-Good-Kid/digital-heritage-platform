@@ -12,7 +12,7 @@ def csrf_exempt(view_func):
     view_func.csrf_exempt = True
     return view_func
 
-from models import db, User, DigitalAsset, DigitalWill, PlatformPolicy, Story, FAQ
+from models import db, User, DigitalAsset, DigitalWill, PlatformPolicy, Story, FAQ, ExternalKnowledge, ExternalKnowledgeChunk
 from .decorators import admin_required
 from .stats import get_dashboard_stats, get_user_growth_data, get_activity_data
 from .crud import user_crud, asset_crud, will_crud, content_crud
@@ -913,5 +913,200 @@ def api_chat_usage():
         })
 
     return jsonify({'usage': result, 'date': today})
+
+
+# ============================================================================
+# 外部知识库管理（支持多提供者：网页/飞书Wiki/通用API）
+# ============================================================================
+
+@admin_bp.route('/api/external-knowledge/providers', methods=['GET'])
+@csrf_exempt
+@admin_required
+def api_external_knowledge_providers():
+    """获取所有可用的知识库提供者信息及表单字段定义"""
+    from ai.knowledge_providers import get_all_providers_info
+    return jsonify({'success': True, 'providers': get_all_providers_info()})
+
+
+@admin_bp.route('/api/external-knowledge', methods=['GET'])
+@csrf_exempt
+@admin_required
+def api_list_external_knowledge():
+    """获取外部知识库链接列表"""
+    links = ExternalKnowledge.query.order_by(ExternalKnowledge.created_at.desc()).all()
+    # 提供者显示名称映射
+    from ai.knowledge_providers import PROVIDER_REGISTRY
+    data = [{
+        'id': link.id,
+        'name': link.name,
+        'url': link.url,
+        'provider': link.provider,
+        'provider_display': PROVIDER_REGISTRY.get(link.provider, type('obj', (object,), {'display_name': link.provider})).display_name if PROVIDER_REGISTRY.get(link.provider) else link.provider,
+        'is_active': link.is_active,
+        'last_synced': link.last_synced.strftime('%Y-%m-%d %H:%M') if link.last_synced else '从未同步',
+        'chunk_count': link.chunk_count,
+        'created_at': link.created_at.strftime('%Y-%m-%d %H:%M') if link.created_at else ''
+    } for link in links]
+    return jsonify({'success': True, 'links': data})
+
+
+def _sync_knowledge_from_provider(link):
+    """
+    核心同步函数：通过对应提供者获取内容 → 切分 → 向量化 → 存储
+    
+    Args:
+        link: ExternalKnowledge 实例
+    
+    Returns:
+        tuple: (success: bool, message: str, chunk_count: int)
+    """
+    from ai.knowledge_providers import get_provider
+    from ai.chunker import split_text
+    from ai.embedding import embed_texts
+    import json
+    from models import get_china_time
+
+    # 获取提供者实例并验证配置
+    config = link.get_config()
+    try:
+        provider = get_provider(link.provider, config)
+    except ValueError as e:
+        return False, str(e), 0
+
+    valid, msg = provider.validate_config()
+    if not valid:
+        return False, f"配置不完整: {msg}", 0
+
+    # 通过提供者获取内容
+    try:
+        text = provider.fetch_content()
+    except Exception as e:
+        return False, f"获取内容失败: {str(e)}", 0
+
+    # 切分文本
+    chunks = split_text(text, chunk_size=500, chunk_overlap=50)
+    if not chunks:
+        return False, "内容切分后无有效片段", 0
+
+    # 生成向量
+    try:
+        embeddings = embed_texts(chunks)
+    except Exception as emb_err:
+        return False, f"向量化失败: {str(emb_err)}", 0
+
+    # 删除旧chunks，写入新chunks
+    ExternalKnowledgeChunk.query.filter_by(external_id=link.id).delete()
+    for idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+        chunk = ExternalKnowledgeChunk(
+            external_id=link.id,
+            chunk_index=idx,
+            content=chunk_text,
+            embedding=json.dumps(embedding, ensure_ascii=False)
+        )
+        db.session.add(chunk)
+
+    link.chunk_count = len(chunks)
+    link.last_synced = get_china_time()
+
+    return True, f"成功同步，共 {len(chunks)} 个知识片段", len(chunks)
+
+
+@admin_bp.route('/api/external-knowledge', methods=['POST'])
+@csrf_exempt
+@admin_required
+def api_add_external_knowledge():
+    """添加外部知识库链接并通过对应提供者API同步内容"""
+    data = request.json
+    name = data.get('name', '').strip()
+    provider_type = data.get('provider', 'webpage')
+    config = {k: v for k, v in data.items() if k not in ('name', 'provider')}
+
+    if not name:
+        return jsonify({'success': False, 'message': '名称不能为空'}), 400
+
+    # 验证提供者类型是否合法
+    from ai.knowledge_providers import PROVIDER_REGISTRY
+    if provider_type not in PROVIDER_REGISTRY:
+        available = ', '.join(PROVIDER_REGISTRY.keys())
+        return jsonify({'success': False, 'message': f'不支持的提供者类型: {provider_type}，可选: {available}'}), 400
+
+    # 创建记录
+    ext = ExternalKnowledge(
+        user_id=current_user.id,
+        name=name,
+        provider=provider_type,
+        is_active=True
+    )
+    ext.set_config(config)
+    db.session.add(ext)
+    db.session.flush()
+
+    # 执行同步
+    success, message, chunk_count = _sync_knowledge_from_provider(ext)
+
+    if success:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'"{name}" - {message}',
+            'chunk_count': chunk_count
+        })
+    else:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'添加失败: {message}'}), 400
+
+
+@admin_bp.route('/api/external-knowledge/<int:link_id>', methods=['DELETE'])
+@csrf_exempt
+@admin_required
+def api_delete_external_knowledge(link_id):
+    """删除外部知识库链接及其所有片段"""
+    link = ExternalKnowledge.query.get_or_404(link_id)
+    try:
+        db.session.delete(link)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '已删除外部知识库链接'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'删除失败: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/external-knowledge/<int:link_id>/toggle', methods=['POST'])
+@csrf_exempt
+@admin_required
+def api_toggle_external_knowledge(link_id):
+    """启用/禁用外部知识库链接"""
+    link = ExternalKnowledge.query.get_or_404(link_id)
+    link.is_active = not link.is_active
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'is_active': link.is_active})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/external-knowledge/<int:link_id>/sync', methods=['POST'])
+@csrf_exempt
+@admin_required
+def api_sync_external_knowledge(link_id):
+    """重新同步外部知识库链接内容"""
+    link = ExternalKnowledge.query.get_or_404(link_id)
+
+    try:
+        success, message, chunk_count = _sync_knowledge_from_provider(link)
+        if success:
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': f'"{link.name}" - {message}',
+                'chunk_count': chunk_count
+            })
+        else:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'同步失败: {message}'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'同步异常: {str(e)}'}), 500
 
 

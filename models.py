@@ -190,6 +190,62 @@ class KnowledgeChunk(db.Model):
         return f'<KnowledgeChunk file_id={self.file_id} idx={self.chunk_index}>'
 
 
+class ExternalKnowledge(db.Model):
+    """外部知识库链接模型 - 支持多种知识库平台API接入（网页/飞书Wiki/通用API）"""
+    __tablename__ = 'external_knowledge'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    name = db.Column(db.String(200), nullable=False)           # 链接名称/描述
+    provider = db.Column(db.String(30), default='webpage')     # 提供者类型: webpage/feishu_wiki/generic_api
+    config_json = db.Column(db.Text, default='{}')             # 提供者配置(JSON): URL、app_id、api_key等
+    is_active = db.Column(db.Boolean, default=True)            # 是否启用
+    last_synced = db.Column(db.DateTime)                       # 最后同步时间
+    chunk_count = db.Column(db.Integer, default=0)             # 同步后的文本块数量
+    created_at = db.Column(db.DateTime, default=get_china_time)
+    updated_at = db.Column(db.DateTime, default=get_china_time, onupdate=get_china_time)
+
+    # 关系: 一个外部链接对应多个文本块
+    chunks = db.relationship('ExternalKnowledgeChunk', backref='source_link', lazy='dynamic',
+                             cascade='all, delete-orphan')
+
+    def get_config(self):
+        """获取配置字典"""
+        import json
+        try:
+            return json.loads(self.config_json) if self.config_json else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
+    def set_config(self, config_dict):
+        """设置配置字典"""
+        import json
+        self.config_json = json.dumps(config_dict, ensure_ascii=False)
+
+    @property
+    def url(self):
+        """兼容属性：从config中提取主URL"""
+        return self.get_config().get('url', '') or self.get_config().get('api_url', '')
+
+    def __repr__(self):
+        return f'<ExternalKnowledge {self.name} [{self.provider}]>'
+
+
+class ExternalKnowledgeChunk(db.Model):
+    """外部知识库文本块模型 - 存储从外部URL抓取并切分后的文本片段及其向量"""
+    __tablename__ = 'external_knowledge_chunks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    external_id = db.Column(db.Integer, db.ForeignKey('external_knowledge.id'), nullable=False, index=True)
+    chunk_index = db.Column(db.Integer, nullable=False)     # 块序号
+    content = db.Column(db.Text, nullable=False)             # 原文内容
+    embedding = db.Column(db.Text, nullable=True)            # 向量数据(JSON格式)
+    created_at = db.Column(db.DateTime, default=get_china_time)
+
+    def __repr__(self):
+        return f'<ExternalKnowledgeChunk external_id={self.external_id} idx={self.chunk_index}>'
+
+
 class ChatMessage(db.Model):
     """对话消息模型 - 存储AI对话的聊天记录"""
     __tablename__ = 'chat_messages'

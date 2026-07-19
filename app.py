@@ -2,7 +2,7 @@
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, Response, stream_with_context, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 
@@ -635,13 +635,76 @@ def register():
 
     return render_template('auth/register.html')
 
+@app.route('/captcha')
+def captcha_image():
+    """生成登录验证码图片（使用Pillow，兼容Windows）"""
+    import random
+    import io
+    from PIL import Image, ImageDraw, ImageFont
+
+    # 排除容易混淆的字符
+    characters = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+    captcha_text = ''.join(random.choices(characters, k=4))
+    session['captcha'] = captcha_text.upper()
+
+    # 画布尺寸
+    width, height = 160, 50
+    image = Image.new('RGB', (width, height), color=(255, 255, 255))
+    draw = ImageDraw.Draw(image)
+
+    # 尝试加载字体
+    font_path = os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'WenQuanWeiMiHei-1.ttf')
+    try:
+        font = ImageFont.truetype(font_path, size=36)
+    except Exception:
+        try:
+            font = ImageFont.truetype(os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'NotoSansSC-Regular.ttf'), size=36)
+        except Exception:
+            font = ImageFont.load_default()
+
+    # 绘制干扰线
+    for _ in range(5):
+        x1 = random.randint(0, width)
+        y1 = random.randint(0, height)
+        x2 = random.randint(0, width)
+        y2 = random.randint(0, height)
+        draw.line([(x1, y1), (x2, y2)], fill=(random.randint(100, 200), random.randint(100, 200), random.randint(100, 200)), width=1)
+
+    # 绘制干扰点
+    for _ in range(50):
+        x = random.randint(0, width - 1)
+        y = random.randint(0, height - 1)
+        draw.point((x, y), fill=(random.randint(150, 230), random.randint(150, 230), random.randint(150, 230)))
+
+    # 绘制验证码字符（每个字符位置和颜色随机）
+    char_width = width // (len(captcha_text) + 1)
+    for i, ch in enumerate(captcha_text):
+        x = char_width * (i + 1) + random.randint(-8, 8)
+        y = random.randint(2, 12)
+        color = (random.randint(30, 120), random.randint(30, 120), random.randint(30, 120))
+        draw.text((x, y), ch, font=font, fill=color)
+
+    # 输出到内存
+    buf = io.BytesIO()
+    image.save(buf, format='PNG')
+    buf.seek(0)
+
+    return Response(buf.read(), mimetype='image/png')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """用户登录"""
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        captcha_input = request.form.get('captcha', '').strip().upper()
         remember = request.form.get('remember', False)
+
+        # 验证码校验
+        captcha_expected = session.pop('captcha', None)
+        if not captcha_expected or captcha_input != captcha_expected:
+            flash('验证码错误，请重新输入', 'error')
+            return redirect(url_for('login'))
 
         # 添加数据库连接重试机制
         max_retries = 3
@@ -3342,7 +3405,10 @@ def ai_health_check():
     if issues:
         msg += ' | 注意: ' + '；'.join(issues)
 
-    return jsonify({'available': available, 'providers': providers, 'message': msg})
+    # 生成简洁的提供者显示名称
+    provider_display = '智谱AI' if zhipu_key else ('SiliconFlow' if sf_key else '未配置')
+
+    return jsonify({'available': available, 'provider': provider_display, 'providers': providers, 'message': msg})
 
 
 @app.route('/chat/api/knowledge/upload', methods=['POST'])

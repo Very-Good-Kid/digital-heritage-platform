@@ -31,6 +31,21 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="captcha" class="form-label">验证码</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                                <input type="text" class="form-control" id="captcha" name="captcha"
+                                       maxlength="4" required autocomplete="off" placeholder="请输入验证码">
+                                <img id="captcha-img" src="{{ url_for('captcha_image') }}"
+                                     alt="验证码" class="border rounded"
+                                     style="height:38px;cursor:pointer"
+                                     title="点击刷新验证码"
+                                     onclick="this.src='{{ url_for('captcha_image') }}?t='+new Date().getTime()">
+                            </div>
+                            <small class="text-muted">点击图片可刷新验证码</small>
+                        </div>
+
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="remember" name="remember">
                             <label class="form-check-label" for="remember">记住我</label>

@@ -58,6 +58,88 @@
     </div>
 </div>
 
+<!-- 外部知识库链接 -->
+<div class="page-header mt-4">
+    <div>
+        <h4 class="page-title" style="font-size:1.2rem"><i class="bi bi-link-45deg me-2"></i>外部知识库</h4>
+        <p class="page-subtitle">接入飞书Wiki、通用API或网页链接，系统自动抓取内容并建立向量索引</p>
+    </div>
+    <div>
+        <button class="btn btn-gradient-primary" onclick="showAddExternalModal()">
+            <i class="bi bi-plus-circle me-2"></i>添加外部知识源
+        </button>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>来源地址</th>
+                        <th>状态</th>
+                        <th>片段数</th>
+                        <th>最后同步</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="external-table-body">
+                </tbody>
+            </table>
+        </div>
+        <div id="external-empty-tip" class="text-center text-muted py-4" style="display:none">
+            <i class="bi bi-link-45deg" style="font-size:2rem"></i>
+            <p class="mt-2">暂无外部知识库</p>
+            <p><small>支持飞书知识库 / 通用API接口 / 网页链接三种接入方式</small></p>
+        </div>
+    </div>
+</div>
+
+<!-- 添加外部知识源模态框（动态表单） -->
+<div class="modal fade" id="addExternalModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-link-45deg me-2"></i>添加外部知识源</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 名称（固定字段） -->
+                <div class="mb-3">
+                    <label class="form-label">名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="ext-name" placeholder="例如：民法典全文、公司内部wiki">
+                </div>
+
+                <!-- 提供者类型选择 -->
+                <div class="mb-3">
+                    <label class="form-label">接入方式 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="ext-provider" onchange="onProviderChange()">
+                        <!-- 选项由JS动态加载填充 -->
+                    </select>
+                </div>
+
+                <!-- 动态表单区域：根据选择的提供者类型渲染不同字段 -->
+                <div id="ext-dynamic-fields"></div>
+
+                <div class="alert alert-info" id="ext-help-text">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span id="ext-help-content">请选择接入方式</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="btn-add-external" onclick="addExternalLink()">
+                    <i class="bi bi-plus-circle me-1"></i>添加并同步
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 知识库统计 -->
 <div class="row mt-4">
     <div class="col-md-3">
@@ -97,6 +179,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadKnowledgeList();
         loadStats();
+        loadExternalList();
         checkAIHealth();
     });
 
@@ -325,6 +408,238 @@
             } else {
                 alert(data.message || '删除失败');
             }
+        });
+    }
+
+    // ===== 外部知识库管理（支持多提供者） =====
+
+    // 提供者定义缓存
+    let _providersCache = null;
+
+    function loadProviders() {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        return fetch('/admin/api/external-knowledge/providers', {
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            _providersCache = data.providers || [];
+            // 填充提供者选择下拉框
+            const selectEl = document.getElementById('ext-provider');
+            if (selectEl) {
+                selectEl.innerHTML = _providersCache.map(p =>
+                    `<option value="${p.name}">${p.display_name}</option>`
+                ).join('');
+                onProviderChange();
+            }
+            return _providersCache;
+        });
+    }
+
+    function onProviderChange() {
+        const providerName = document.getElementById('ext-provider').value;
+        const container = document.getElementById('ext-dynamic-fields');
+        const helpContent = document.getElementById('ext-help-content');
+        const provider = (_providersCache || []).find(p => p.name === providerName);
+
+        if (!provider) {
+            container.innerHTML = '<p class="text-muted">请先选择接入方式</p>';
+            return;
+        }
+
+        // 渲染该提供者的表单字段
+        let fieldsHtml = '';
+        (provider.form_fields || []).forEach(field => {
+            const requiredMark = field.required ? ' <span class="text-danger">*</span>' : '';
+            let inputHtml = '';
+
+            if (field.type === 'select') {
+                inputHtml = `<select class="form-control" id="ext-field-${field.field}" name="${field.field}">
+                    ${(field.options || []).map(o => `<option value="${o.value}" ${o.value === (field.default || '') ? 'selected' : ''}>${o.label}</option>`).join('')}
+                </select>`;
+            } else if (field.type === 'textarea') {
+                inputHtml = `<textarea class="form-control" id="ext-field-${field.field}" name="${field.field}"
+                    rows="3" placeholder="${field.placeholder || ''}"></textarea>`;
+            } else if (field.type === 'password') {
+                inputHtml = `<input type="password" class="form-control" id="ext-field-${field.field}"
+                    name="${field.field}" placeholder="${field.placeholder || ''}">`;
+            } else {
+                inputHtml = `<input type="${field.type === 'url' ? 'url' : 'text'}"
+                    class="form-control" id="ext-field-${field.field}" name="${field.field}"
+                    placeholder="${field.placeholder || ''}">`;
+            }
+
+            const helpText = field.help_text ? `<small class="text-muted d-block mt-1">${field.help_text}</small>` : '';
+
+            fieldsHtml += `
+                <div class="mb-3">
+                    <label class="form-label">${field.label}${requiredMark}</label>
+                    ${inputHtml}
+                    ${helpText}
+                </div>`;
+        });
+
+        container.innerHTML = fieldsHtml;
+
+        // 更新帮助文本
+        const helpMessages = {
+            'webpage': '系统会自动抓取网页正文内容，进行文本切分和向量化索引。此过程可能需要几秒到几十秒。',
+            'feishu_wiki': '通过飞书开放平台API获取知识库文档纯文本内容。需要先在飞书开放平台创建自建应用并获取 app_id 和 app_secret。',
+            'generic_api': '调用自定义API接口获取知识库文本。支持GET/POST方法、自定义Header认证、JSON路径提取等配置。'
+        };
+        helpContent.textContent = helpMessages[providerName] || `使用${provider.display_name}接入外部知识库`;
+    }
+
+    function loadExternalList() {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        fetch('/admin/api/external-knowledge', {
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            const tbody = document.getElementById('external-table-body');
+            const emptyTip = document.getElementById('external-empty-tip');
+
+            if (!data.links || data.links.length === 0) {
+                tbody.innerHTML = '';
+                emptyTip.style.display = 'block';
+                return;
+            }
+
+            emptyTip.style.display = 'none';
+
+            // 类型图标/颜色映射
+            const typeMap = {
+                'webpage': {icon: 'bi-globe text-primary', label: '网页'},
+                'feishu_wiki': {icon: 'bi-feather text-info', label: '飞书Wiki'},
+                'generic_api': {icon: 'bi-code-slash text-warning', label: '通用API'}
+            };
+
+            tbody.innerHTML = data.links.map((link, i) => {
+                const typeInfo = typeMap[link.provider] || {icon: 'bi-link-45deg', label: link.provider};
+                const displayUrl = link.url.length > 40 ? link.url.substring(0, 40) + '...' : link.url;
+                return `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><i class="bi bi-link-45deg me-1"></i>${link.name}</td>
+                    <td><span class="badge bg-light text-dark"><i class="bi ${typeInfo.icon} me-1"></i>${link.provider_display || typeInfo.label}</span></td>
+                    <td><a href="${link.url}" target="_blank" title="${link.url}">${displayUrl}</a></td>
+                    <td><span class="badge ${link.is_active ? 'bg-success' : 'bg-secondary'}">${link.is_active ? '已启用' : '已禁用'}</span></td>
+                    <td><span class="badge bg-info">${link.chunk_count} 片段</span></td>
+                    <td style="white-space:nowrap;font-size:0.85rem">${link.last_synced}</td>
+                    <td style="white-space:nowrap">
+                        <button class="btn btn-sm btn-outline-${link.is_active ? 'warning' : 'success'}"
+                                onclick="toggleExternal(${link.id})" title="${link.is_active ? '禁用' : '启用'}">
+                            <i class="bi bi-${link.is_active ? 'pause-circle' : 'play-circle'}"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="syncExternal(${link.id})" title="重新同步">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteExternal(${link.id}, '${link.name.replace(/'/g, "\\'")}')" title="删除">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }).catch(err => console.error('加载外部知识库列表失败:', err));
+    }
+
+    function showAddExternalModal() {
+        document.getElementById('ext-name').value = '';
+        // 先加载提供者列表，再打开模态框
+        loadProviders().then(() => {
+            new bootstrap.Modal(document.getElementById('addExternalModal')).show();
+        });
+    }
+
+    function addExternalLink() {
+        const name = document.getElementById('ext-name').value.trim();
+        const providerType = document.getElementById('ext-provider').value;
+
+        if (!name) {
+            alert('名称不能为空');
+            return;
+        }
+
+        // 收集所有动态字段的值
+        const formData = {name, provider: providerType};
+        const dynamicFields = document.querySelectorAll('#ext-dynamic-fields [name]');
+        dynamicFields.forEach(el => {
+            formData[el.name] = el.value;
+        });
+
+        // 验证必填字段
+        const provider = (_providersCache || []).find(p => p.name === providerType);
+        if (provider && provider.form_fields) {
+            for (const field of provider.form_fields) {
+                if (field.required && !formData[field.field]) {
+                    alert(`${field.label} 不能为空`);
+                    document.getElementById(`ext-field-${field.field}`)?.focus();
+                    return;
+                }
+            }
+        }
+
+        const btn = document.getElementById('btn-add-external');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>正在同步，请稍候...';
+
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+
+        fetch('/admin/api/external-knowledge', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify(formData)
+        }).then(resp => resp.json()).then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>添加并同步';
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('addExternalModal')).hide();
+                loadExternalList();
+                loadStats();
+                alert(data.message);
+            } else {
+                alert(data.message || '添加失败');
+            }
+        }).catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>添加并同步';
+            alert('请求失败: ' + err.message);
+        });
+    }
+
+    function toggleExternal(linkId) {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        fetch(`/admin/api/external-knowledge/${linkId}/toggle`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            if (data.success) loadExternalList(); else alert(data.message || '操作失败');
+        });
+    }
+
+    function syncExternal(linkId) {
+        if (!confirm('确定重新同步该外部知识源？这将重新获取内容并更新向量索引。')) return;
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        fetch(`/admin/api/external-knowledge/${linkId}/sync`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            if (data.success) { loadExternalList(); alert(data.message); }
+            else alert(data.message || '同步失败');
+        });
+    }
+
+    function deleteExternal(linkId, name) {
+        if (!confirm(`确定删除外部知识源 "${name}"？\n删除后相关片段将无法被AI检索。`)) return;
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        fetch(`/admin/api/external-knowledge/${linkId}`, {
+            method: 'DELETE',
+            headers: {'X-CSRFToken': csrfToken}
+        }).then(resp => resp.json()).then(data => {
+            if (data.success) loadExternalList(); else alert(data.message || '删除失败');
         });
     }
 </script>
