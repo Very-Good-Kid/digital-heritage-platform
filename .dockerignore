@@ -1,0 +1,50 @@
+# 环境变量文件（含密钥）
+.env
+.env.*
+!.env.example
+
+# 数据库文件（含用户PII）
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# 上传/临时文件
+uploads/
+temp_pdfs/
+static/uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# 版本控制
+.git/
+.gitignore
+.gitattributes
+
+# 本地密钥与配置
+*.pem
+*.key
+*.crt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 文档/测试数据
+docs/
+test/
+tests/
+
+# 审查/审计文件（不打包进镜像）
+WorkBuddy/
+*.md

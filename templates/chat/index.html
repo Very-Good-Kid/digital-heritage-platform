@@ -437,7 +437,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- 固定版本 + DOMPurify 净化 XSS -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script>
     let currentSessionId = '';
     let isStreaming = false;
@@ -633,11 +635,18 @@
     }
 
     function formatText(text) {
-        if (typeof marked !== 'undefined') {
-            marked.setOptions({ breaks: true, gfm: true });
-            return marked.parse(text);
+        if (typeof marked === 'undefined') {
+            // 降级：纯文本 HTML 转义
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                       .replace(/>/g, '&gt;').replace(/\n/g, '<br>');
         }
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+        marked.setOptions({ breaks: true, gfm: true });
+        const rawHtml = marked.parse(text);
+        // 关键：DOMPurify 净化后再写入 innerHTML，拦截 <script>/<img onerror>/on* 等
+        return DOMPurify.sanitize(rawHtml, {
+            FORBID_TAGS: ['style', 'iframe', 'form', 'input', 'button'],
+            FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+        });
     }
 
     function escapeHtml(text) {

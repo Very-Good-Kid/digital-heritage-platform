@@ -86,8 +86,10 @@ class UserCRUD:
             if password:
                 user.password_hash = generate_password_hash(password)
 
-            if is_admin is not None:
-                user.is_admin = is_admin
+            # 安全加固：普通更新路径禁止修改 is_admin，提权走专用受控接口
+            # is_admin 字段已从普通更新路径中移除，防止越权提权
+            if 'is_admin' in data:
+                data.pop('is_admin', None)  # 显式剔除，不静默忽略
 
             if is_active is not None:
                 user.is_active = is_active
@@ -101,7 +103,30 @@ class UserCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Update failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '更新失败，请重试'}), 500
+
+    @staticmethod
+    def set_admin_privilege(user_id, is_admin, actor):
+        """专用提权/降权接口（需二次确认/管理员口令，由视图层额外校验）。
+
+        Args:
+            user_id: 目标用户ID
+            is_admin: 是否设为管理员(bool)
+            actor: 当前操作用户对象
+
+        Returns:
+            (jsonify_response, status_code)
+        """
+        if not actor or not actor.is_admin:
+            return jsonify({'success': False, 'message': '无权限'}), 403
+        user = User.query.get_or_404(user_id)
+        user.is_admin = bool(is_admin)
+        try:
+            db.session.commit()
+            return jsonify({'success': True, 'message': '权限已更新'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': '操作失败，请重试'}), 500
 
     @staticmethod
     def toggle_status(user_id):
@@ -119,7 +144,7 @@ class UserCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Update failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '操作失败，请重试'}), 500
 
     @staticmethod
     def delete_user(user_id):
@@ -141,7 +166,7 @@ class UserCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Deletion failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '删除失败，请重试'}), 500
 
 
 user_crud = UserCRUD()
@@ -169,7 +194,7 @@ class AssetCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Deletion failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '删除失败，请重试'}), 500
 
 
 asset_crud = AssetCRUD()
@@ -197,7 +222,7 @@ class WillCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Deletion failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '删除失败，请重试'}), 500
 
     @staticmethod
     def update_will_status(will_id, data):
@@ -224,7 +249,7 @@ class WillCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Update failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '更新失败，请重试'}), 500
 
 
 will_crud = WillCRUD()
@@ -275,7 +300,7 @@ class ContentCRUD:
             return jsonify({'success': False, 'message': '该平台已存在'}), 400
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Create failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '创建失败，请重试'}), 500
 
     @staticmethod
     def update_policy(policy_id, data):
@@ -297,7 +322,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Update failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '更新失败，请重试'}), 500
 
     @staticmethod
     def delete_policy(policy_id):
@@ -314,7 +339,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Deletion failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '删除失败，请重试'}), 500
 
     @staticmethod
     def create_faq(data):
@@ -345,7 +370,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Create failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '创建失败，请重试'}), 500
 
     @staticmethod
     def update_faq(faq_id, data):
@@ -366,7 +391,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Update failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '更新失败，请重试'}), 500
 
     @staticmethod
     def delete_faq(faq_id):
@@ -383,7 +408,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Deletion failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '删除失败，请重试'}), 500
 
     @staticmethod
     def approve_story(story_id):
@@ -400,7 +425,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Operation failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '操作失败，请重试'}), 500
 
     @staticmethod
     def reject_story(story_id):
@@ -417,7 +442,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Operation failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '操作失败，请重试'}), 500
 
     @staticmethod
     def delete_story(story_id):
@@ -434,7 +459,7 @@ class ContentCRUD:
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Deletion failed: {str(e)}'}), 500
+            return jsonify({'success': False, 'message': '删除失败，请重试'}), 500
 
 
 content_crud = ContentCRUD()

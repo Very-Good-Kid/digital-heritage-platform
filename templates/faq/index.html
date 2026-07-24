@@ -77,7 +77,7 @@
                                  class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
                                  data-bs-parent="#accordion-{{ category }}">
                                 <div class="accordion-body">
-                                    {{ faq.answer | safe }}
+                                    {{ faq.answer | replace('\n', '<br>') | replace('<', '&lt;') | replace('>', '&gt;') | safe }}
                                 </div>
                             </div>
                         </div>

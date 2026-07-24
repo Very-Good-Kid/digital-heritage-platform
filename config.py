@@ -3,15 +3,22 @@ from datetime import timedelta
 
 class Config:
     """应用配置类"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    # 安全加固：SECRET_KEY 缺失则拒绝启动，禁止硬编码默认值
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY 未设置：拒绝启动。请通过环境变量注入安全密钥。"
+        )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+    # 会话空闲超时（30分钟无操作则需重新登录）
+    SESSION_IDLE_TIMEOUT = timedelta(minutes=30)
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     UPLOAD_FOLDER = 'uploads'
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 
-    # 会话配置 - 确保在部署环境中持久化
-    SESSION_COOKIE_SECURE = False  # 开发环境为False，生产环境根据需要设置
+    # 安全加固：强制 Cookie Secure + HttpOnly + SameSite（HTTPS 下受保护）
+    SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_PERMANENT = True
@@ -107,15 +114,12 @@ class ProductionConfig(Config):
             pass
 
     # 生产环境会话配置
-    SESSION_COOKIE_SECURE = True  # 生产环境使用HTTPS时设置为True
+    SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_PERMANENT = True
 
-    # 确保SECRET_KEY在环境中设置
-    if not os.environ.get('SECRET_KEY'):
-        print("⚠️  警告: 生产环境未设置SECRET_KEY环境变量！")
-        print("    请在 Render 环境变量中设置 SECRET_KEY")
+    # SECRET_KEY 已在 Config 基类强制要求，此处不再重复校验
 
 config = {
     'development': DevelopmentConfig,

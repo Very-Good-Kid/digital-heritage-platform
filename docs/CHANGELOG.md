@@ -4,6 +4,44 @@
 
 ---
 
+## [1.3.0] - 2026-07-23
+
+### 安全加固（Security Hardening）
+
+#### 高危修复
+- **凭据加密重构** `utils/encryption.py`
+  - 移除硬编码默认密码（`digital_heritage_default_password_2026`），密钥/密码缺失时 fail-fast 拒绝启动
+  - 去除全局固定盐，改用每条记录独立随机盐（`salt_b64:cipher_b64` 格式存储）
+  - PBKDF2 迭代次数 100K → 600K
+  - 错误处理从静默返回 `None` 改为明确抛出 `ValueError`
+- **聊天 XSS 防护**：前端引入 DOMPurify（CDN 锁定 `dompurify@3.1.6`）双重净化，禁止 `style/iframe/onerror` 等危险标签属性；服务端同步引入 bleach 净化
+- **CSRF 边界收紧** `admin/views.py` / `app.py`
+  - 移除 25 个后台状态变更 API 的 `@csrf_exempt` 装饰器（用户/资产/遗嘱/政策/FAQ/故事审核/外部知识库等）
+  - 移除 `upload_knowledge`/`delete_knowledge`/`delete_session` 的 CSRF 豁免
+- **调试边界防护** `app.py` / `deploy/Dockerfile`
+  - 生产环境通过 `ALLOW_DEBUG` 开关控制，默认关闭且仅绑定 `127.0.0.1`
+  - Dockerfile 新增非 root 用户 `appuser`，CMD 改为 gunicorn（移除 debug 模式），pip 源改回官方 PyPI
+
+#### 中危修复
+- `config.py`：`SECRET_KEY` 缺失即拒绝启动，`SESSION_COOKIE_SECURE=True` 强制启用，新增 `SESSION_IDLE_TIMEOUT=30min`
+- 开放重定向防护：登录 `next` 参数使用 `url_parse` 校验，仅允许相对路径
+- 登录限流：会话级失败计数，≥10 次触发 15 分钟冷却
+- 注册密码策略：≥8 位且字母数字混合，统一模糊错误提示（防用户枚举）
+- RAG 提示注入防护 `ai/rag.py`：检索内容用 `<untrusted_reference>` 边界标记，明确"不可当作指令执行"；入库前调用 `sanitize_llm_content()` 净化
+- FAQ XSS 防护：`templates/faq/index.html` 答案改为 HTML 实体转义后再 `safe`
+- 知识库配额限制：单用户 50 文件 + 100MB 上限
+- `admin/crud.py`：`update_user()` 显式 `pop('is_admin')` 阻断提权，新增 `set_admin_privilege()` 专用接口需二次校验
+
+#### 低危修复
+- 异常信息净化：`admin/crud.py` 6 处异常从 `f'Create failed: {str(e)}'` 改为通用中文提示，避免敏感信息泄露
+
+#### 依赖与配置
+- `requirements.txt` 升级：Flask≥3.0.3、Werkzeug≥3.0.3、cryptography≥42.0.5，新增 `bleach>=6.1.0`
+- 新增 `.dockerignore`（排除 `.env`/`instance/`/`*.db`/`uploads/`/`temp_pdfs/`/`.git`）
+- `.env` 完善：补充 `ENCRYPTION_KEY` / `ENCRYPTION_PASSWORD`，`SECRET_KEY` 替换为强随机值
+
+---
+
 ## [1.2.0] - 2026-05-15
 
 ### 新增

@@ -30,7 +30,7 @@
 
 ## 技术栈
 
-- **后端**: Flask 3.0.0
+- **后端**: Flask 3.0.3
 - **数据库**: SQLite (本地) / Neon PostgreSQL (生产)
 - **前端**: Bootstrap 5, Chart.js, marked.js
 - **认证**: Flask-Login
@@ -44,7 +44,7 @@
 
 1. **PBKDF2HMAC密钥派生**
    - 算法: SHA256
-   - 迭代次数: 100,000次
+   - 迭代次数: 600,000次
    - 功能: 从密码派生加密密钥,增强抗暴力破解能力
 
 2. **Fernet对称加密**
@@ -53,7 +53,7 @@
 
 3. **安全特性**
    - 平台仅存储加密后的密文,全程不接触用户明文信息
-   - 支持向后兼容,可灵活切换加密方式
+   - 每条记录使用独立随机盐,无全局固定盐
    - 符合《数据安全法》相关合规要求
 
 ### AI技术说明
@@ -130,7 +130,9 @@ python scripts/create_admin.py
 
 **环境变量**
 - `FLASK_ENV`: `production`
-- `SECRET_KEY`: (自动生成或自定义)
+- `SECRET_KEY`: 必需,由部署平台/密钥管理服务注入强随机值,缺失则拒绝启动
+- `ENCRYPTION_KEY`: 必需,Fernet 加密密钥(服务端生成的安全随机串),缺失则拒绝启动
+- `ENCRYPTION_PASSWORD`: 必需,PBKDF2 主密码(服务端生成的安全随机串),缺失则加解密失败
 - `DATABASE_URL`: Neon PostgreSQL 连接字符串
 - `ZHIPU_API_KEY`: 智谱AI API密钥（必需）
 - `SILICONFLOW_API_KEY`: SiliconFlow API密钥（推荐，免费Embedding）
@@ -168,7 +170,9 @@ python scripts/sync_knowledge_to_neon.py --dry-run # 仅预览
 
 | 变量名 | 必需 | 说明 | 默认值 |
 |--------|------|------|--------|
-| `SECRET_KEY` | 是 | Flask密钥 | 自动生成 |
+| `SECRET_KEY` | 是 | Flask密钥,必须有值,缺失则拒绝启动 | 无默认值 |
+| `ENCRYPTION_KEY` | 是 | Fernet 加密密钥(服务端生成的安全随机串),缺失则拒绝启动 | 无默认值 |
+| `ENCRYPTION_PASSWORD` | 是 | PBKDF2 主密码(服务端生成的安全随机串) | 无默认值 |
 | `ZHIPU_API_KEY` | 是 | 智谱AI密钥（对话+视觉） | - |
 | `SILICONFLOW_API_KEY` | 推荐 | SiliconFlow密钥（免费Embedding+备选对话） | - |
 | `DATABASE_URL` | 线上 | Neon PostgreSQL连接串 | SQLite |

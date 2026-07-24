@@ -387,6 +387,25 @@ def _migrate_add_columns():
                 cursor.execute('ALTER TABLE users ADD COLUMN daily_chat_limit INTEGER DEFAULT 5')
                 print("[MIGRATE] users表添加 daily_chat_limit 列")
 
+            # external_knowledge表: 旧schema使用 url/content_type 列,
+            # 新模型改为 provider/config_json。补充新列并移除废弃列(url 为 NOT NULL,
+            # 若不移除会导致新 INSERT 因未提供 url 而失败)。
+            cursor.execute('PRAGMA table_info(external_knowledge)')
+            ek_cols = [row[1] for row in cursor.fetchall()]
+            if 'provider' not in ek_cols:
+                cursor.execute("ALTER TABLE external_knowledge ADD COLUMN provider VARCHAR(30) DEFAULT 'webpage'")
+                print("[MIGRATE] external_knowledge表添加 provider 列")
+            if 'config_json' not in ek_cols:
+                cursor.execute("ALTER TABLE external_knowledge ADD COLUMN config_json TEXT DEFAULT '{}'")
+                print("[MIGRATE] external_knowledge表添加 config_json 列")
+            # 删除模型已不再使用的废弃列(仅在存在时执行)
+            if 'url' in ek_cols:
+                cursor.execute("ALTER TABLE external_knowledge DROP COLUMN url")
+                print("[MIGRATE] external_knowledge表删除废弃的 url 列")
+            if 'content_type' in ek_cols:
+                cursor.execute("ALTER TABLE external_knowledge DROP COLUMN content_type")
+                print("[MIGRATE] external_knowledge表删除废弃的 content_type 列")
+
             conn.commit()
             conn.close()
         else:
@@ -403,6 +422,33 @@ def _migrate_add_columns():
                     ))
                     conn.commit()
                     print("[MIGRATE] users表添加 daily_chat_limit 列")
+
+                # external_knowledge表: 补充新列并移除废弃列
+                ek_result = conn.execute(db.text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name='external_knowledge'"
+                ))
+                ek_cols = [r[0] for r in ek_result.fetchall()]
+                if 'provider' not in ek_cols:
+                    conn.execute(db.text(
+                        "ALTER TABLE external_knowledge ADD COLUMN provider VARCHAR(30) DEFAULT 'webpage'"
+                    ))
+                    conn.commit()
+                    print("[MIGRATE] external_knowledge表添加 provider 列")
+                if 'config_json' not in ek_cols:
+                    conn.execute(db.text(
+                        "ALTER TABLE external_knowledge ADD COLUMN config_json TEXT DEFAULT '{}'"
+                    ))
+                    conn.commit()
+                    print("[MIGRATE] external_knowledge表添加 config_json 列")
+                if 'url' in ek_cols:
+                    conn.execute(db.text("ALTER TABLE external_knowledge DROP COLUMN url"))
+                    conn.commit()
+                    print("[MIGRATE] external_knowledge表删除废弃的 url 列")
+                if 'content_type' in ek_cols:
+                    conn.execute(db.text("ALTER TABLE external_knowledge DROP COLUMN content_type"))
+                    conn.commit()
+                    print("[MIGRATE] external_knowledge表删除废弃的 content_type 列")
 
         print("[OK] Database migration check complete")
     except Exception as e:
@@ -609,12 +655,21 @@ def register():
             flash('两次输入的密码不一致', 'error')
             return redirect(url_for('register'))
 
+        # 密码强度策略：最少8位，包含字母和数字
+        if len(password) < 8:
+            flash('密码长度至少8位', 'error')
+            return redirect(url_for('register'))
+        if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
+            flash('密码必须包含字母和数字', 'error')
+            return redirect(url_for('register'))
+
+        # 安全加固：统一模糊错误提示，防止用户名/邮箱枚举
         if User.query.filter_by(username=username).first():
-            flash('用户名已存在', 'error')
+            flash('注册失败，请检查输入信息', 'error')
             return redirect(url_for('register'))
 
         if User.query.filter_by(email=email).first():
-            flash('邮箱已被注册', 'error')
+            flash('注册失败，请检查输入信息', 'error')
             return redirect(url_for('register'))
 
         user = User(
@@ -700,6 +755,14 @@ def login():
         captcha_input = request.form.get('captcha', '').strip().upper()
         remember = request.form.get('remember', False)
 
+        # 登录限流：连续失败 ≥10 次后进入 15 分钟冷却
+        import time
+        fail_count = session.get('_login_fail_count', 0)
+        last_fail = session.get('_login_last_fail_time', 0)
+        if fail_count >= 10 and (time.time() - last_fail) < 900:
+            flash('登录尝试次数过多，请15分钟后再试', 'error')
+            return redirect(url_for('login'))
+
         # 验证码校验
         captcha_expected = session.pop('captcha', None)
         if not captcha_expected or captcha_input != captcha_expected:
@@ -724,12 +787,19 @@ def login():
                     return redirect(url_for('login'))
 
         if user and check_password_hash(user.password_hash, password):
+            # 登录成功：清除失败计数
+            session.pop('_login_fail_count', None)
+            session.pop('_login_last_fail_time', None)
             login_user(user, remember=remember)
             next_page = request.args.get('next')
 
-            # 如果指定了next页面，跳转到next页面
+            # 安全：仅允许同站相对路径，防止开放重定向钓鱼
             if next_page:
-                return redirect(next_page)
+                from werkzeug.urls import url_parse
+                # 仅当 next 是相对路径（无 netloc/scheme）时才接受
+                parsed = url_parse(next_page)
+                if not parsed.netloc and not parsed.scheme:
+                    return redirect(next_page)
 
             # 管理员跳转到后台，普通用户跳转到用户仪表盘
             if user.is_admin:
@@ -737,7 +807,18 @@ def login():
             else:
                 return redirect(url_for('dashboard'))
         else:
-            flash('用户名或密码错误', 'error')
+            # 登录失败：递增失败计数，实现冷却机制
+            import time
+            fail_count = session.get('_login_fail_count', 0) + 1
+            session['_login_fail_count'] = fail_count
+            session['_login_last_fail_time'] = time.time()
+
+            if fail_count >= 10:
+                flash('登录尝试次数过多，请15分钟后再试', 'error')
+            elif fail_count >= 5:
+                flash('用户名或密码错误，剩余尝试次数有限', 'error')
+            else:
+                flash('用户名或密码错误', 'error')
 
     return render_template('auth/login.html')
 
@@ -3438,6 +3519,24 @@ def upload_knowledge():
     if not current_user.is_admin:
         return jsonify({'success': False, 'message': '仅管理员可管理知识库'}), 403
 
+    # 知识库配额检查：限制文件数量和总存储容量（防存储DoS）
+    MAX_KNOWLEDGE_FILES = 50
+    MAX_TOTAL_SIZE_MB = 100
+    existing_count = KnowledgeFile.query.count()
+    if existing_count >= MAX_KNOWLEDGE_FILES:
+        return jsonify({
+            'success': False,
+            'message': f'知识库文件数已达上限({MAX_KNOWLEDGE_FILES}个)，请先删除旧文件'
+        }), 400
+
+    # 计算当前总存储（KB级别）
+    current_total_bytes = db.session.query(db.func.sum(db.func.length(KnowledgeFile.file_data))).scalar() or 0
+    if current_total_bytes > MAX_TOTAL_SIZE_MB * 1024 * 1024:
+        return jsonify({
+            'success': False,
+            'message': f'知识库总存储已达上限({MAX_TOTAL_SIZE_MB}MB)，请先删除旧文件'
+        }), 400
+
     if 'file' not in request.files:
         return jsonify({'success': False, 'message': '未选择文件'}), 400
 
@@ -3535,7 +3634,7 @@ def upload_knowledge():
         db.session.rollback()
         return jsonify({'success': False, 'message': f'处理文件失败: {str(e)}'}), 500
 
-upload_knowledge.csrf_exempt = True
+# upload_knowledge CSRF 已恢复校验（前端需带 X-CSRFToken）
 
 
 @app.route('/chat/api/knowledge/list')
@@ -3598,7 +3697,7 @@ def delete_knowledge(file_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': f'删除失败: {str(e)}'}), 500
 
-delete_knowledge.csrf_exempt = True
+# delete_knowledge CSRF 已恢复校验（前端需带 X-CSRFToken）
 
 
 @app.route('/chat/api/sessions')
@@ -3730,7 +3829,7 @@ def delete_session(session_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-delete_session.csrf_exempt = True
+# delete_session CSRF 已恢复校验（前端需带 X-CSRFToken）
 
 
 @app.route('/chat/api/sessions/title/<session_id>')
@@ -3766,4 +3865,9 @@ def internal_error(error):
     return render_template('errors/500.html'), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # 仅在显式开启且绝不安绑公网时才允许调试；生产用 gunicorn
+    if os.environ.get('ALLOW_DEBUG') == '1':
+        # 安全：仅绑定 127.0.0.1，绝不暴露到公网
+        app.run(debug=True, host='127.0.0.1', port=5000)
+    else:
+        app.run(host='127.0.0.1', port=5000)

@@ -1,217 +1,151 @@
 """
-加密工具模块 - 支持PBKDF2HMAC密钥派生的双层加密方案
+加密工具模块 - 支持PBKDF2HMAC密钥派生的双层加密方案（安全加固版）
 
 技术实现:
 1. Fernet对称加密: 使用AES-128-CBC模式进行数据加密
-2. PBKDF2HMAC密钥派生: 使用SHA256算法,100000次迭代,从密码派生加密密钥
-3. 双层加密方案: PBKDF2HMAC派生密钥 + Fernet加密,符合《技术概要》要求
+2. PBKDF2HMAC密钥派生: 使用SHA256算法,600000次迭代,从密码派生加密密钥
+3. 每条记录使用随机盐（salt随密文存储），消除全局固定盐风险
 
-安全特性:
-- 密钥派生强度: 100000次PBKDF2HMAC迭代,抗暴力破解
-- 加密算法: Fernet(AES-128-CBC + HMAC-SHA256)
-- 向后兼容: 支持原有Fernet加密方式
+安全特性（v2 加固）:
+- 缺失 ENCRYPTION_KEY / ENCRYPTION_PASSWORD 时 **fail-fast 拒绝启动**（禁止默认值）
+- 每条记录独立随机盐（os.urandom(16)），盐随密文存储，消除全局固定盐风险
+- 密钥绝不打印到日志，异常仅记录错误类型
+- PBKDF2 迭代次数 600000（OWASP 2023+ 推荐量级）
 
 使用方式:
-- encrypt_data(data, use_pbkdf2=True): 加密数据(默认启用PBKDF2HMAC)
-- decrypt_data(encrypted_data, use_pbkdf2=True): 解密数据(默认启用PBKDF2HMAC)
-- encrypt_data_with_derived_key(data, password): 使用自定义密码加密
-- decrypt_data_with_derived_key(encrypted_data, password): 使用自定义密码解密
+- encrypt_data(data): 加密数据（自动生成随机盐，返回 salt_b64:cipher_b64）
+- decrypt_data(encrypted_data): 解密数据（从密文中提取盐值）
+- encrypt_data_with_derived_key(data, password, salt): 使用自定义密码+显式盐加密
+- decrypt_data_with_derived_key(payload, password): 使用自定义密码解密
 
 环境变量:
-- ENCRYPTION_KEY: Fernet加密密钥(可选,不设置则自动生成)
-- ENCRYPTION_PASSWORD: PBKDF2HMAC密码(可选,不设置则使用默认密码)
-- PBKDF2_SALT: PBKDF2HMAC盐值(可选,不设置则使用默认盐值)
+- ENCRYPTION_KEY: Fernet加密密钥（必须设置，缺失则拒绝启动）
+- ENCRYPTION_PASSWORD: PBKDF2HMAC主密码（必须设置，缺失则拒绝启动）
 """
 
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
+import binascii
 import os
 
+from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
 # ============================================================
-# 加密配置
+# 加密配置 —— 缺失即 fail-fast，禁止任何默认值
 # ============================================================
 
-# Fernet加密密钥(用于向后兼容的单层加密)
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
 if not ENCRYPTION_KEY:
-    # 在生产环境中，这个密钥应该安全地存储
-    ENCRYPTION_KEY = Fernet.generate_key()
-    print(f"Generated encryption key: {ENCRYPTION_KEY.decode()}")
+    raise RuntimeError(
+        "ENCRYPTION_KEY 未设置：拒绝启动。请通过密钥管理服务/部署平台注入 Fernet 密钥。"
+    )
+try:
+    fernet = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
+except (ValueError, TypeError):
+    raise RuntimeError(
+        "ENCRYPTION_KEY 格式非法：必须为合法 Fernet 密钥（base64, 44 字符）。"
+    )
 
-fernet = Fernet(ENCRYPTION_KEY)
+ENCRYPTION_PASSWORD = os.environ.get('ENCRYPTION_PASSWORD')
+if not ENCRYPTION_PASSWORD:
+    raise RuntimeError(
+        "ENCRYPTION_PASSWORD 未设置：拒绝启动。请通过密钥管理服务/部署平台注入。"
+    )
 
-# PBKDF2HMAC密钥派生相关
-# 使用固定的盐值（生产环境应从环境变量获取）
-PBKDF2_SALT = os.environ.get('PBKDF2_SALT', b'digital_heritage_platform_salt_2026')
-PBKDF2_ITERATIONS = 100000  # 迭代次数，符合安全标准
+# OWASP 2023+ 推荐：PBKDF2-SHA256 迭代 ≥ 600000
+PBKDF2_ITERATIONS = 600000
 
-def derive_key_from_password(password: str, salt: bytes = None) -> bytes:
-    """
-    使用PBKDF2HMAC从密码派生加密密钥
-    
-    Args:
-        password: 用户密码或主密钥
-        salt: 盐值，如果不提供则使用默认盐值
-    
+
+def derive_key_from_password(password: str, salt: bytes) -> bytes:
+    """使用PBKDF2HMAC从密码派生加密密钥。
+
+    salt 必须显式传入（每条记录独立随机盐），不再使用全局固定盐。
+
     Returns:
-        派生出的32字节密钥（适合Fernet使用）
+        派生出的32字节密钥（base64 编码，适合 Fernet 使用）
     """
-    if salt is None:
-        salt = PBKDF2_SALT
-    
-    try:
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,  # Fernet需要32字节密钥
-            salt=salt,
-            iterations=PBKDF2_ITERATIONS,
-        )
-        derived_key = kdf.derive(password.encode())
-        # 转换为Fernet可用的base64格式
-        return base64.urlsafe_b64encode(derived_key)
-    except Exception as e:
-        print(f"Key derivation error: {e}")
-        return None
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=PBKDF2_ITERATIONS,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
-def encrypt_data_with_derived_key(data: str, password: str) -> str:
-    """
-    使用PBKDF2HMAC派生密钥后加密数据（双层加密方案）
-    
-    Args:
-        data: 要加密的字符串数据
-        password: 用于派生密钥的密码
-    
-    Returns:
-        加密后的字符串
+
+def encrypt_data_with_derived_key(data: str, password: str, salt: bytes) -> str:
+    """使用PBKDF2HMAC派生密钥后加密数据。
+
+    返回格式: salt_b64:cipher_b64（盐随密文一起存储）
     """
     if not data or not password:
         return None
-    
-    try:
-        # 第一步：使用PBKDF2HMAC从密码派生密钥
-        derived_key = derive_key_from_password(password)
-        if not derived_key:
-            return None
-        
-        # 第二步：使用派生密钥创建Fernet实例进行加密
-        fernet_derived = Fernet(derived_key)
-        encrypted = fernet_derived.encrypt(data.encode())
-        
-        return base64.urlsafe_b64encode(encrypted).decode()
-    except Exception as e:
-        print(f"Encryption with derived key error: {e}")
+
+    derived_key = derive_key_from_password(password, salt)
+    fernet_derived = Fernet(derived_key)
+    encrypted = fernet_derived.encrypt(data.encode())
+    return (
+        base64.urlsafe_b64encode(salt).decode()
+        + ':'
+        + base64.urlsafe_b64encode(encrypted).decode()
+    )
+
+
+def decrypt_data_with_derived_key(payload: str, password: str) -> str:
+    """使用PBKDF2HMAC派生密钥后解密数据。
+
+    从 payload 的 salt_b64:cipher_b64 中提取盐值。
+    """
+    if not payload or not password:
         return None
 
-def decrypt_data_with_derived_key(encrypted_data: str, password: str) -> str:
-    """
-    使用PBKDF2HMAC派生密钥后解密数据（双层加密方案）
-    
-    Args:
-        encrypted_data: 加密的字符串数据
-        password: 用于派生密钥的密码
-    
-    Returns:
-        解密后的原始字符串
-    """
-    if not encrypted_data or not password:
-        return None
-    
     try:
-        # 第一步：使用PBKDF2HMAC从密码派生密钥
-        derived_key = derive_key_from_password(password)
-        if not derived_key:
-            return None
-        
-        # 第二步：使用派生密钥创建Fernet实例进行解密
-        fernet_derived = Fernet(derived_key)
-        decoded = base64.urlsafe_b64decode(encrypted_data.encode())
-        decrypted = fernet_derived.decrypt(decoded)
-        
-        return decrypted.decode()
-    except Exception as e:
-        print(f"Decryption with derived key error: {e}")
-        return None
+        salt_b64, cipher_b64 = payload.split(':', 1)
+        salt = base64.urlsafe_b64decode(salt_b64)
+        derived_key = derive_key_from_password(password, salt)
+        return (
+            Fernet(derived_key)
+            .decrypt(base64.urlsafe_b64decode(cipher_b64))
+            .decode()
+        )
+    except (InvalidToken, ValueError, binascii.Error) as e:
+        # 安全：不打印密钥/敏感信息，仅记录错误类型
+        raise ValueError("解密失败：密钥不匹配或数据损坏") from e
 
-def encrypt_data(data, use_pbkdf2=True):
-    """
-    加密数据 - 支持PBKDF2HMAC密钥派生的双层加密方案
-    
+
+def encrypt_data(data: str, salt: bytes = None) -> str:
+    """对外加密接口。每条记录使用独立随机盐。
+
     Args:
         data: 要加密的字符串数据
-        use_pbkdf2: 是否使用PBKDF2HMAC密钥派生(默认True)
-                   True: 使用PBKDF2HMAC派生密钥+Fernet加密(符合《技术概要》)
-                   False: 仅使用Fernet加密(向后兼容)
-    
+        salt: 可选随机盐（16字节），不传则自动生成 os.urandom(16)
+
     Returns:
-        加密后的字符串
+        salt_b64:cipher_b64 格式的密文字符串
     """
     if not data:
         return None
-    
-    try:
-        if use_pbkdf2:
-            # 使用PBKDF2HMAC密钥派生(符合《技术概要》要求)
-            # 使用环境变量中的密码或默认密码
-            password = os.environ.get('ENCRYPTION_PASSWORD', 'digital_heritage_default_password_2026')
-            return encrypt_data_with_derived_key(data, password)
-        else:
-            # 原有Fernet加密(向后兼容)
-            encrypted = fernet.encrypt(data.encode())
-            return base64.urlsafe_b64encode(encrypted).decode()
-    except Exception as e:
-        print(f"Encryption error: {e}")
-        return None
 
-def decrypt_data(encrypted_data, use_pbkdf2='auto'):
-    """
-    解密数据 - 支持PBKDF2HMAC密钥派生的双层解密方案(自动检测加密方式)
-    
+    if salt is None:
+        salt = os.urandom(16)
+
+    return encrypt_data_with_derived_key(data, ENCRYPTION_PASSWORD, salt)
+
+
+def decrypt_data(encrypted_data: str) -> str:
+    """对外解密接口。
+
     Args:
-        encrypted_data: 加密的字符串数据
-        use_pbkdf2: 是否使用PBKDF2HMAC密钥派生
-                   'auto': 自动检测加密方式(默认,推荐)
-                   True: 使用PBKDF2HMAC派生密钥+Fernet解密
-                   False: 仅使用Fernet解密(向后兼容)
-    
+        encrypted_data: salt_b64:cipher_b64 格式的密文字符串
+
     Returns:
-        解密后的原始字符串
+        解密后的原始字符串，失败返回 None
     """
     if not encrypted_data:
         return None
-    
-    # 自动检测模式:先尝试PBKDF2HMAC,失败则尝试Fernet
-    if use_pbkdf2 == 'auto':
-        # 先尝试PBKDF2HMAC解密(新数据)
-        try:
-            password = os.environ.get('ENCRYPTION_PASSWORD', 'digital_heritage_default_password_2026')
-            result = decrypt_data_with_derived_key(encrypted_data, password)
-            if result:
-                return result
-        except:
-            pass
-        
-        # 如果PBKDF2HMAC失败,尝试Fernet解密(旧数据)
-        try:
-            decoded = base64.urlsafe_b64decode(encrypted_data.encode())
-            decrypted = fernet.decrypt(decoded)
-            return decrypted.decode()
-        except Exception as e:
-            print(f"Decryption error (auto mode): {e}")
-            return None
-    
-    # 手动指定模式
+
     try:
-        if use_pbkdf2:
-            # 使用PBKDF2HMAC密钥派生(符合《技术概要》要求)
-            password = os.environ.get('ENCRYPTION_PASSWORD', 'digital_heritage_default_password_2026')
-            return decrypt_data_with_derived_key(encrypted_data, password)
-        else:
-            # 原有Fernet解密(向后兼容)
-            decoded = base64.urlsafe_b64decode(encrypted_data.encode())
-            decrypted = fernet.decrypt(decoded)
-            return decrypted.decode()
-    except Exception as e:
-        print(f"Decryption error: {e}")
+        return decrypt_data_with_derived_key(encrypted_data, ENCRYPTION_PASSWORD)
+    except ValueError:
         return None

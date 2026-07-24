@@ -69,25 +69,95 @@ class WebpageProvider(BaseKnowledgeProvider):
     name = "webpage"
     display_name = "网页链接"
 
+    @staticmethod
+    def _browser_headers(url):
+        """构造接近真实浏览器的请求头(避免被反爬拦截)。
+
+        注意: 不要手动设置 Accept-Encoding, 否则 requests 不会自动解压响应。
+        """
+        referer = ''
+        try:
+            from urllib.parse import urlparse
+            p = urlparse(url)
+            referer = f"{p.scheme}://{p.netloc}/"
+        except Exception:
+            pass
+        return {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,'
+                      'image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Connection': 'keep-alive',
+            'Referer': referer,
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0',
+        }
+
+    @staticmethod
+    def _fetch_site_cookies(url):
+        """抓取目标站点首页以拿到反爬所需的 Cookie(如百度百科的 BAIDUID)。"""
+        try:
+            from urllib.parse import urlparse
+            p = urlparse(url)
+            origin = f"{p.scheme}://{p.netloc}/"
+            r = requests.get(
+                origin,
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'},
+                timeout=15,
+            )
+            if r.cookies:
+                return '; '.join(f"{k}={v}" for k, v in r.cookies.items())
+        except Exception:
+            pass
+        return ''
+
     def fetch_content(self):
         url = self.config.get('url', '')
         if not url:
             raise Exception("URL不能为空")
 
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        }
+        headers = self._browser_headers(url)
 
-        resp = requests.get(url, headers=headers, timeout=30)
+        try:
+            resp = requests.get(url, headers=headers, timeout=30)
+        except requests.RequestException as e:
+            raise Exception(f"请求发送失败: {e}")
+
+        # 被反爬拦截(403/401/429)时, 先获取站点Cookie再重试一次
+        if resp.status_code in (401, 403, 429):
+            cookie = self._fetch_site_cookies(url)
+            if cookie:
+                headers['Cookie'] = cookie
+                try:
+                    resp = requests.get(url, headers=headers, timeout=30)
+                except requests.RequestException:
+                    pass
+
         resp.encoding = resp.apparent_encoding or 'utf-8'
 
         if resp.status_code != 200:
-            raise Exception(f"无法访问URL (HTTP {resp.status_code})")
+            raise Exception(
+                f"无法访问URL (HTTP {resp.status_code})。该站点可能启用了反爬机制，"
+                f"请更换为其他可直接公开访问的来源，或手动复制内容后通过文本方式导入。"
+            )
 
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(resp.text, 'lxml')
+
+        # 检测反爬验证页(如「百度安全验证」/Cloudflare验证): 这类页面可能返回200,
+        # 但正文为空且需要浏览器执行JS挑战, requests无法绕过。
+        if self._is_blocked_page(resp.text, soup):
+            raise Exception(
+                "该网页返回了「安全验证」拦截页，站点禁止自动化抓取。"
+                "请改用其他来源（如维基百科、政府/机构官网等可直接访问的页面），"
+                "或手动复制正文后通过文本方式导入。"
+            )
 
         # 移除无关标签
         for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'aside', 'noscript']):
@@ -103,6 +173,28 @@ class WebpageProvider(BaseKnowledgeProvider):
             raise Exception("无法从该URL提取有效文本内容")
 
         return text
+
+    @staticmethod
+    def _is_blocked_page(html_text, soup):
+        """判断响应是否为反爬验证页(返回200但无真实正文)"""
+        lowered = (html_text or '').lower()
+        markers = [
+            '安全验证', '百度安全验证', 'verify you are a human',
+            'just a moment', 'checking your browser', 'captcha',
+            'enable javascript and cookies to continue',
+            'access denied', 'are you a robot',
+        ]
+        if any(m in lowered for m in markers):
+            return True
+        # 正文几乎为空(验证页 body 通常为空)
+        try:
+            title = (soup.title.string or '') if soup.title else ''
+            if '验证' in title or 'verify' in title.lower():
+                return True
+        except Exception:
+            pass
+        body_text = soup.get_text(separator='\n', strip=True).strip()
+        return len(body_text) < 30
 
     @staticmethod
     def get_form_fields():

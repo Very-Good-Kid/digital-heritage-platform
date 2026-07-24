@@ -1,9 +1,9 @@
-# 核心框架
-Flask==3.0.0
+# 核心框架（安全升级：修复 CVE-2024-34069、CVE-2023-46136）
+Flask>=3.0.3
 Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 Flask-WTF==1.2.1
-Werkzeug==3.0.1
+Werkzeug>=3.0.3
 
 # PostgreSQL驱动（用于Supabase）
 psycopg2-binary>=2.9.9
@@ -11,8 +11,8 @@ psycopg2-binary>=2.9.9
 # WSGI服务器
 gunicorn>=21.0.0
 
-# 加密和安全
-cryptography>=41.0.0
+# 加密和安全（修复 CVE-2023-49083、CVE-2024-26130）
+cryptography>=42.0.5
 
 # PDF生成
 reportlab>=4.0.0
@@ -31,6 +31,9 @@ openpyxl>=3.1.0
 python-dotenv>=1.0.0
 email-validator>=2.0.0
 WTForms>=3.0.0
+
+# 安全净化（服务端 XSS 防护）
+bleach>=6.1.0
 
 # 后台管理依赖（Bootstrap 5 和 Chart.js 通过CDN引入，无需额外依赖）
 

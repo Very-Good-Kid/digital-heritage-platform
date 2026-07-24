@@ -201,7 +201,6 @@ def api_user_detail(user_id):
 
 
 @admin_bp.route('/api/users', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_create_user():
     """创建用户API"""
@@ -209,7 +208,6 @@ def api_create_user():
 
 
 @admin_bp.route('/api/users/<int:user_id>', methods=['PUT', 'PATCH'])
-@csrf_exempt
 @admin_required
 def api_update_user(user_id):
     """更新用户API"""
@@ -217,7 +215,6 @@ def api_update_user(user_id):
 
 
 @admin_bp.route('/api/users/<int:user_id>/toggle-status', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_toggle_user_status(user_id):
     """切换用户状态API"""
@@ -225,7 +222,6 @@ def api_toggle_user_status(user_id):
 
 
 @admin_bp.route('/api/users/<int:user_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_user(user_id):
     """删除用户API"""
@@ -323,7 +319,6 @@ def api_assets():
 
 
 @admin_bp.route('/api/assets/<int:asset_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_asset(asset_id):
     """删除数字资产API"""
@@ -416,7 +411,6 @@ def api_wills():
 
 
 @admin_bp.route('/api/wills/<int:will_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_will(will_id):
     """删除数字资产处置意愿声明书API"""
@@ -424,7 +418,6 @@ def api_delete_will(will_id):
 
 
 @admin_bp.route('/api/wills/<int:will_id>/status', methods=['PUT'])
-@csrf_exempt
 @admin_required
 def api_update_will_status(will_id):
     """更新遗嘱状态API"""
@@ -462,7 +455,6 @@ def api_policies():
 
 
 @admin_bp.route('/api/content/policies', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_create_policy():
     """创建平台政策API"""
@@ -470,7 +462,6 @@ def api_create_policy():
 
 
 @admin_bp.route('/api/content/policies/<int:policy_id>', methods=['PUT', 'PATCH'])
-@csrf_exempt
 @admin_required
 def api_update_policy(policy_id):
     """更新平台政策API"""
@@ -478,7 +469,6 @@ def api_update_policy(policy_id):
 
 
 @admin_bp.route('/api/content/policies/<int:policy_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_policy(policy_id):
     """删除平台政策API"""
@@ -533,7 +523,6 @@ def api_get_policy_detail(detail_id):
 
 
 @admin_bp.route('/api/content/policy-details', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_create_policy_detail():
     """创建政策条款详情"""
@@ -557,7 +546,6 @@ def api_create_policy_detail():
 
 
 @admin_bp.route('/api/content/policy-details/<int:detail_id>', methods=['PUT', 'PATCH'])
-@csrf_exempt
 @admin_required
 def api_update_policy_detail(detail_id):
     """更新政策条款详情"""
@@ -580,7 +568,6 @@ def api_update_policy_detail(detail_id):
 
 
 @admin_bp.route('/api/content/policy-details/<int:detail_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_policy_detail(detail_id):
     """删除政策条款详情"""
@@ -623,7 +610,6 @@ def api_faqs():
 
 
 @admin_bp.route('/api/content/faqs', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_create_faq():
     """创建FAQ API"""
@@ -631,7 +617,6 @@ def api_create_faq():
 
 
 @admin_bp.route('/api/content/faqs/<int:faq_id>', methods=['PUT', 'PATCH'])
-@csrf_exempt
 @admin_required
 def api_update_faq(faq_id):
     """更新FAQ API"""
@@ -639,7 +624,6 @@ def api_update_faq(faq_id):
 
 
 @admin_bp.route('/api/content/faqs/<int:faq_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_faq(faq_id):
     """删除FAQ API"""
@@ -703,7 +687,6 @@ def api_stories():
 
 
 @admin_bp.route('/api/content/stories/<int:story_id>/approve', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_approve_story(story_id):
     """审核通过故事API"""
@@ -711,7 +694,6 @@ def api_approve_story(story_id):
 
 
 @admin_bp.route('/api/content/stories/<int:story_id>/reject', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_reject_story(story_id):
     """审核拒绝故事API"""
@@ -719,7 +701,6 @@ def api_reject_story(story_id):
 
 
 @admin_bp.route('/api/content/stories/<int:story_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_story(story_id):
     """删除故事API"""
@@ -767,7 +748,6 @@ def knowledge():
 # ============================================================================
 
 @admin_bp.route('/sync/faq', methods=['POST'])
-@csrf_exempt
 @admin_required
 def sync_faq():
     """同步FAQ数据"""
@@ -856,7 +836,6 @@ def sync_faq():
 # ============================================================================
 
 @admin_bp.route('/api/users/<int:user_id>/chat-limit', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_set_chat_limit(user_id):
     """设置用户的每日AI对话次数限制
@@ -1012,7 +991,6 @@ def _sync_knowledge_from_provider(link):
 
 
 @admin_bp.route('/api/external-knowledge', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_add_external_knowledge():
     """添加外部知识库链接并通过对应提供者API同步内容"""
@@ -1057,7 +1035,6 @@ def api_add_external_knowledge():
 
 
 @admin_bp.route('/api/external-knowledge/<int:link_id>', methods=['DELETE'])
-@csrf_exempt
 @admin_required
 def api_delete_external_knowledge(link_id):
     """删除外部知识库链接及其所有片段"""
@@ -1072,7 +1049,6 @@ def api_delete_external_knowledge(link_id):
 
 
 @admin_bp.route('/api/external-knowledge/<int:link_id>/toggle', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_toggle_external_knowledge(link_id):
     """启用/禁用外部知识库链接"""
@@ -1087,7 +1063,6 @@ def api_toggle_external_knowledge(link_id):
 
 
 @admin_bp.route('/api/external-knowledge/<int:link_id>/sync', methods=['POST'])
-@csrf_exempt
 @admin_required
 def api_sync_external_knowledge(link_id):
     """重新同步外部知识库链接内容"""

@@ -161,7 +161,7 @@
                                          class="accordion-collapse collapse"
                                          data-bs-parent="#accordion-{{ category }}">
                                         <div class="accordion-body">
-                                            {{ faq.answer | replace('\\n', '<br>') | safe }}
+                                            {{ faq.answer | replace('\n', '<br>') | replace('<', '&lt;') | replace('>', '&gt;') | safe }}
                                         </div>
                                     </div>
                                 </div>
