@@ -9,6 +9,10 @@ services:
         value: production
       - key: SECRET_KEY
         generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ENCRYPTION_PASSWORD
+        sync: false
       - key: RENDER_DATA_DIR
         value: /opt/render/project/data
       - key: PYTHONUNBUFFERED

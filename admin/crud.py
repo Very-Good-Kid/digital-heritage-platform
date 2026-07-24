@@ -2,6 +2,7 @@
 后台管理系统 - CRUD操作模块
 """
 from flask import jsonify
+import re
 from werkzeug.security import generate_password_hash
 from sqlalchemy.exc import IntegrityError
 
@@ -27,6 +28,15 @@ class UserCRUD:
 
             if not all([username, email, password]):
                 return jsonify({'success': False, 'message': '请填写必填字段'}), 400
+
+            # 密码强度校验（与注册页策略一致: ≥8位 + 字母数字混合）
+            pw_err = None
+            if len(password) < 8:
+                pw_err = '密码至少需要8个字符'
+            elif not (re.search(r'[A-Za-z]', password) and re.search(r'[0-9]', password)):
+                pw_err = '密码必须同时包含字母和数字'
+            if pw_err:
+                return jsonify({'success': False, 'message': pw_err}), 400
 
             # 检查用户名是否已存在
             if User.query.filter_by(username=username).first():

@@ -110,8 +110,12 @@ class ProductionConfig(Config):
     if not os.path.exists(UPLOAD_FOLDER):
         try:
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        except:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "无法创建上传目录 %s, 文件上传功能不可用: %s",
+                UPLOAD_FOLDER, e, exc_info=True
+            )
 
     # 生产环境会话配置
     SESSION_COOKIE_SECURE = True

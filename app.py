@@ -96,6 +96,21 @@ csrf = CustomCSRFProtect(app)
 
 # 初始化扩展
 db.init_app(app)
+
+# SQLite WAL 模式: 读写互不阻塞, 避免「database is locked」
+from sqlalchemy import event as _event, text as _text
+def _enable_sqlite_wal():
+    try:
+        engine = db.engine  # 首次访问触发延迟创建
+        if 'sqlite' in str(engine.url):
+            with engine.connect() as _conn:
+                _conn.execute(_text("PRAGMA journal_mode=WAL"))
+                _conn.execute(_text("PRAGMA busy_timeout=5000"))
+                _conn.commit()
+            print("[DB] SQLite WAL mode enabled")
+    except Exception as _e:
+        pass  # PostgreSQL / 引擎未就绪时跳过
+_enable_sqlite_wal()
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -1595,7 +1610,7 @@ def generate_pdf(will_id):
         print(f"PDF generation error: {e}")
         import traceback
         traceback.print_exc()
-        flash(f'PDF生成失败：{str(e)}', 'error')
+        flash('PDF生成失败，请稍后重试', 'error')
         return redirect(url_for('view_will', will_id=will_id))
 
 
@@ -3304,6 +3319,7 @@ def chat_message():
             image_base64=image_base64,
             image_mime_type=image_mime
         )
+        _increment_chat_usage(current_user.id)
         return jsonify({
             'answer': result['answer'],
             'session_id': session_id,
@@ -3317,7 +3333,7 @@ def chat_message():
         elif 'timed out' in error_msg or 'timeout' in error_msg.lower():
             friendly = 'AI响应超时：模型加载中，请稍后重试'
         else:
-            friendly = f'AI服务暂时不可用: {error_msg}'
+            friendly = 'AI服务暂时不可用，请稍后重试'
         return jsonify({'error': friendly}), 500
 
 
@@ -3412,7 +3428,7 @@ def chat_stream():
                 elif 'timed out' in error_msg or 'timeout' in error_msg.lower():
                     friendly = 'AI响应超时：模型正在加载中或网络较慢，请稍后重试（首次加载约需1-2分钟）'
                 else:
-                    friendly = f'AI服务暂时不可用: {error_msg}'
+                    friendly = 'AI服务暂时不可用，请稍后重试'
                 yield f"data: {json.dumps({'error': friendly}, ensure_ascii=False)}\n\n"
 
     return app.response_class(
@@ -3769,19 +3785,29 @@ def _check_chat_limit(user_id):
 
 
 def _increment_chat_usage(user_id):
-    """用户今日对话次数+1
+    """用户今日对话次数+1（原子自增, 防止TOCTOU竞态绕过）
 
     Args:
         user_id: 用户ID(int)
     """
     today = get_china_time().strftime('%Y-%m-%d')
     try:
-        usage = ChatUsage.query.filter_by(user_id=user_id, usage_date=today).first()
-        if usage:
-            usage.count += 1
-        else:
-            usage = ChatUsage(user_id=user_id, usage_date=today, count=1)
-            db.session.add(usage)
+        # 原子自增: UPDATE + INSERT ON CONFLICT 无竞态窗口
+        result = db.session.execute(
+            db.text(
+                "UPDATE chat_usage SET count = count + 1 "
+                "WHERE user_id = :uid AND usage_date = :date"
+            ),
+            {'uid': user_id, 'date': today}
+        )
+        if result.rowcount == 0:
+            db.session.execute(
+                db.text(
+                    "INSERT INTO chat_usage (user_id, usage_date, count) "
+                    "VALUES (:uid, :date, 1)"
+                ),
+                {'uid': user_id, 'date': today}
+            )
         db.session.commit()
     except Exception as e:
         db.session.rollback()

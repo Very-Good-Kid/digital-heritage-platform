@@ -9,6 +9,75 @@
 调用流程:
   管理员选择提供商类型 → 填写对应凭证 → 系统自动获取内容 → 切分+向量化 → 存入本地数据库
 """
+import socket
+import logging
+from urllib.parse import urlparse, urlunparse
+
+logger = logging.getLogger(__name__)
+
+# 内网/保留/链路本地/元数据 IP 段 —— 拒绝服务端抓取
+_BLOCKED_IP_RANGES = [
+    (0x7F000000, 0x7FFFFFFF),    # 127.0.0.0/8    loopback
+    (0x0A000000, 0x0AFFFFFF),    # 10.0.0.0/8     private
+    (0xAC100000, 0xAC1FFFFF),    # 172.16.0.0/12  private
+    (0xC0A80000, 0xC0A8FFFF),    # 192.168.0.0/16 private
+    (0xA9FE0000, 0xA9FEFFFF),    # 169.254.0.0/16 link-local
+    (0x00000000, 0x00000000),    # 0.0.0.0
+]
+
+def _is_ip_safe(ip_str):
+    """检查 IP 地址是否为内网/保留/链路本地/元数据地址"""
+    packed = socket.inet_aton(ip_str)
+    ip_int = int.from_bytes(packed, 'big')
+    for lo, hi in _BLOCKED_IP_RANGES:
+        if lo <= ip_int <= hi:
+            return False
+    return True
+
+def _resolve_and_check_host(hostname):
+    """解析主机名并检查所有解析出的 IP 是否安全"""
+    try:
+        addrs = socket.getaddrinfo(hostname, None,
+                                    socket.AF_INET, socket.SOCK_STREAM)
+        for addr in addrs:
+            ip = addr[4][0]
+            if not _is_ip_safe(ip):
+                raise ValueError(f"URL 目标 IP {ip} 为内网/保留地址，拒绝访问")
+    except socket.gaierror:
+        raise ValueError(f"无法解析主机名: {hostname}")
+
+def validate_fetch_url(raw_url):
+    """校验抓取/API 调用 URL 安全性：仅允许外网 https，拒绝内网 IP
+
+    Returns:
+        经过清理的 URL（去除认证信息/片段）
+
+    Raises:
+        ValueError: URL 不安全或格式非法
+    """
+    parsed = urlparse(raw_url)
+    # 仅允许 http/https
+    if parsed.scheme not in ('http', 'https'):
+        raise ValueError("仅支持 http/https 协议")
+    # 拒绝 userinfo（防 http://evil@trusted.com）
+    if parsed.username or parsed.password:
+        raise ValueError("URL 中不允许包含用户名/密码")
+    # 解析主机名 → 检查所有 IP
+    host = parsed.hostname
+    if not host:
+        raise ValueError("URL 缺少有效主机名")
+    # 检查是否为 IP 字面量
+    try:
+        socket.inet_aton(host)
+        if not _is_ip_safe(host):
+            raise ValueError(f"URL 目标 {host} 为内网/保留地址，拒绝访问")
+    except OSError:
+        pass  # 不是 IP 字面量，是主机名
+    _resolve_and_check_host(host)
+    # 清理 URL: 去除 fragment + auth
+    clean = urlunparse((parsed.scheme, parsed.netloc, parsed.path,
+                         parsed.params, parsed.query, ''))
+    return clean
 import json
 import os
 import requests
@@ -121,11 +190,12 @@ class WebpageProvider(BaseKnowledgeProvider):
         url = self.config.get('url', '')
         if not url:
             raise Exception("URL不能为空")
+        url = validate_fetch_url(url)
 
         headers = self._browser_headers(url)
 
         try:
-            resp = requests.get(url, headers=headers, timeout=30)
+            resp = requests.get(url, headers=headers, timeout=30, allow_redirects=False)
         except requests.RequestException as e:
             raise Exception(f"请求发送失败: {e}")
 
@@ -135,7 +205,7 @@ class WebpageProvider(BaseKnowledgeProvider):
             if cookie:
                 headers['Cookie'] = cookie
                 try:
-                    resp = requests.get(url, headers=headers, timeout=30)
+                    resp = requests.get(url, headers=headers, timeout=30, allow_redirects=False)
                 except requests.RequestException:
                     pass
 
@@ -382,6 +452,7 @@ class GenericApiProvider(BaseKnowledgeProvider):
         api_key = self.config.get('api_key', '')
         method = self.config.get('method', 'GET').upper()
         json_path = self.config.get('json_path', 'content')  # 默认取 response.content
+        api_url = validate_fetch_url(api_url)
 
         if not api_url:
             raise Exception("API URL不能为空")

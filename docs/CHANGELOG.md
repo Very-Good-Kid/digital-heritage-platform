@@ -4,6 +4,41 @@
 
 ---
 
+## [1.3.1] - 2026-07-24
+
+### 安全加固（Security Hardening）
+
+#### 高危修复
+- **外部知识库 API 密钥明文存储（H3）** `models.py`
+  - `ExternalKnowledge.get_config` / `set_config` 对 `api_key`/`app_secret`/`token`/`access_token`/`secret`/`password`/`app_key` 及以 `_key`/`_secret`… 结尾的敏感字段自动加解密；解密失败向后兼容返回原文
+
+#### 中危修复
+- **SSRF 防护（M2）** `ai/knowledge_providers.py`
+  - 新增 `validate_fetch_url()` / `_is_ip_safe()` / `_resolve_and_check_host()`：解析目标 IP 并拒绝回环/私有/链路本地（含 `169.254.169.254` 云元数据）段，禁止 URL userinfo，抓取 `allow_redirects=False`
+- **对话配额限流绕过 + 竞态（H2）** `app.py`
+  - 非流式 `/chat/api/message` 与流式 `/chat/api/stream` 均调用 `_increment_chat_usage`
+  - 改为原子 `UPDATE chat_usage SET count = count + 1 ...` + 首条 `INSERT`，消除 TOCTOU；生成器中断（异常分支）也落库
+- **SQLite 并发锁（M9）** `app.py`
+  - 启用 WAL（`PRAGMA journal_mode=WAL`）+ `busy_timeout=5000`，降低 `database is locked`
+- **异常信息泄露（M4）** `app.py`
+  - 3 处异常对用户泛化为通用提示（`AI服务暂时不可用，请稍后重试` / `PDF生成失败，请稍后重试`），内部错误仅记日志
+- **后台创建用户无密码强度（M12）** `admin/crud.py`
+  - `create_user` 增加密码策略：≥8 位且字母数字混合，与注册页一致
+- **FAQ XSS 转义遗漏（M3 补充）** `templates/care/index.html`
+  - 关怀页 FAQ 答案同步先转义 `&` 再转义 `<>`（FAQ 页已在 1.3.0 修复）
+- **上传目录创建失败被静默吞掉（M10）** `config.py`
+  - 改为 `except Exception as e` + `logging.warning(..., exc_info=True)`，启动期可排查
+
+#### 低危修复
+- **"双层加密"为假设计（F6）** `utils/encryption.py`
+  - 移除误导的模块级 `fernet = Fernet(ENCRYPTION_KEY)` 变量；`ENCRYPTION_KEY` 仅做启动期格式校验与 fail-fast，实际加解密由 `ENCRYPTION_PASSWORD` 经 PBKDF2 派生密钥完成
+
+#### 部署配置
+- `deploy/Procfile`：补 `FLASK_ENV=production`，防止 gunicorn 落入 `DevelopmentConfig`（`DEBUG=True`）
+- `deploy/render.yaml`：新增 `ENCRYPTION_KEY` / `ENCRYPTION_PASSWORD` 环境变量（`sync: false`，由部署平台注入）
+
+---
+
 ## [1.3.0] - 2026-07-23
 
 ### 安全加固（Security Hardening）

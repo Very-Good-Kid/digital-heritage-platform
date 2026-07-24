@@ -210,17 +210,43 @@ class ExternalKnowledge(db.Model):
                              cascade='all, delete-orphan')
 
     def get_config(self):
-        """获取配置字典"""
+        """获取配置字典（自动解密敏感字段）"""
         import json
+        from utils.encryption import decrypt_data
         try:
-            return json.loads(self.config_json) if self.config_json else {}
+            config = json.loads(self.config_json) if self.config_json else {}
         except (json.JSONDecodeError, TypeError):
             return {}
+        # 解密敏感字段
+        sensitive_keys = ('api_key', 'app_secret', 'token', 'access_token',
+                         'secret', 'password', 'app_key')
+        for key in list(config.keys()):
+            if key in sensitive_keys or key.endswith(('_key', '_secret', '_token')):
+                raw = config[key]
+                if isinstance(raw, str) and raw:
+                    try:
+                        config[key] = decrypt_data(raw)
+                    except Exception:
+                        config[key] = raw  # 向后兼容旧明文数据
+        return config
 
     def set_config(self, config_dict):
-        """设置配置字典"""
+        """设置配置字典（自动加密敏感字段）"""
         import json
-        self.config_json = json.dumps(config_dict, ensure_ascii=False)
+        from utils.encryption import encrypt_data
+        safe_config = dict(config_dict)
+        # 加密敏感字段
+        sensitive_keys = ('api_key', 'app_secret', 'token', 'access_token',
+                         'secret', 'password', 'app_key')
+        for key in list(safe_config.keys()):
+            if key in sensitive_keys or key.endswith(('_key', '_secret', '_token')):
+                val = safe_config[key]
+                if isinstance(val, str) and val:
+                    try:
+                        safe_config[key] = encrypt_data(val)
+                    except Exception:
+                        pass  # 加密失败则保持原值，避免阻断流程
+        self.config_json = json.dumps(safe_config, ensure_ascii=False)
 
     @property
     def url(self):

@@ -41,7 +41,9 @@ if not ENCRYPTION_KEY:
         "ENCRYPTION_KEY 未设置：拒绝启动。请通过密钥管理服务/部署平台注入 Fernet 密钥。"
     )
 try:
-    fernet = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
+    # 仅格式校验：ENCRYPTION_KEY 必须是合法的 Fernet 密钥
+    # 实际加解密使用 ENCRYPTION_PASSWORD + PBKDF2 派生密钥（非此对象）
+    Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
 except (ValueError, TypeError):
     raise RuntimeError(
         "ENCRYPTION_KEY 格式非法：必须为合法 Fernet 密钥（base64, 44 字符）。"
